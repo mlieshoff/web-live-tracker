@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Web Live Tracker</title>
+    <link rel="stylesheet" href="panel.css">
+    <script type="module" src="panel.mjs"></script>
+  </head>
+  <body>
+    <main>
+      <h1>Web Live Tracker</h1>
+      <p>Capture request metadata for this tab while DevTools is open.</p>
+      <button id="start" type="button">Start capture</button>
+      <button id="stop" type="button" disabled>Stop capture</button>
+      <p id="capture-status" role="status">Capture stopped. 0 requests captured.</p>
+    </main>
+  </body>
+</html>
