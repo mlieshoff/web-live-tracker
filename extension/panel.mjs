@@ -6,6 +6,7 @@ const stop = document.querySelector("#stop");
 const status = document.querySelector("#capture-status");
 const exportForm = document.querySelector("#export-form");
 const researchId = document.querySelector("#research-id");
+const datedFolders = document.querySelector("#dated-folders");
 const save = document.querySelector("#save");
 const exportStatus = document.querySelector("#export-status");
 let count = 0;
@@ -45,6 +46,7 @@ exportForm.addEventListener("submit", async (event) => {
   }
 
   const id = researchId.value;
+  const exportDate = datedFolders.checked ? new Date() : undefined;
   try {
     exportFilename(id);
   } catch (error) {
@@ -56,9 +58,10 @@ exportForm.addEventListener("submit", async (event) => {
   start.disabled = true;
   save.disabled = true;
   researchId.disabled = true;
+  datedFolders.disabled = true;
   exportStatus.textContent = "Exporting…";
   try {
-    await exportCapture(chrome.downloads, id, capture.getRecords());
+    await exportCapture(chrome.downloads, id, capture.getRecords(), exportDate);
     exportStatus.textContent = "Export saved. See Chrome downloads for the file.";
   } catch {
     exportStatus.textContent = "Export failed. Check Chrome downloads and try again.";
@@ -66,5 +69,6 @@ exportForm.addEventListener("submit", async (event) => {
     start.disabled = false;
     save.disabled = false;
     researchId.disabled = false;
+    datedFolders.disabled = false;
   }
 });
