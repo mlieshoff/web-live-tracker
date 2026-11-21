@@ -3,5 +3,6 @@
   "name": "Web Live Tracker",
   "version": "0.1.0",
   "description": "Capture request metadata from the Chrome tab you inspect.",
+  "permissions": ["downloads"],
   "devtools_page": "devtools.html"
 }

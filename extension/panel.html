@@ -14,6 +14,14 @@
       <button id="start" type="button">Start capture</button>
       <button id="stop" type="button" disabled>Stop capture</button>
       <p id="capture-status" role="status">Capture stopped. 0 requests captured.</p>
+      <form id="export-form">
+        <label for="research-id">Research ID</label>
+        <input id="research-id" type="text" maxlength="64" autocomplete="off"
+          spellcheck="false" aria-describedby="export-location">
+        <button id="save" type="submit" disabled>Export JSON</button>
+        <p id="export-location">Saves under web-live-tracker in your Chrome downloads folder.</p>
+        <p id="export-status" role="status"></p>
+      </form>
     </main>
   </body>
 </html>
