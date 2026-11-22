@@ -122,23 +122,23 @@ export async function capturePayload(entry, metadata) {
 }
 
 function safeComponent(value) {
-  // Chrome checks every component against its portable filename rules.
+  // Chrome rejects edge tildes. Escape literal exclamation marks along with other punctuation.
   const safe = value.replace(/[^a-z0-9._-]/gi, (character) =>
-    `~${character.charCodeAt(0).toString(16)}~`
-  ).replace(/^\.+|\.+$/g, (dots) => "~2e~".repeat(dots.length))
-    .replace(/\.(local|lnk|scf|url)$/i, "~2e~$1");
+    `!${character.charCodeAt(0).toString(16)}!`
+  ).replace(/^\.+|\.+$/g, (dots) => "!2e!".repeat(dots.length))
+    .replace(/\.(local|lnk|scf|url)$/i, "!2e!$1");
   if (/^(con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\.|$)|^(desktop\.ini|thumbs\.db)$/i.test(safe)) {
-    return `~reserved~${safe}`;
+    return `!reserved!${safe}`;
   }
-  return safe || "~empty~";
+  return safe || "!empty!";
 }
 
 function exchangePath(url) {
-  const segments = url.pathname === "/" ? ["~root~"] : url.pathname.slice(1).split("/").map(safeComponent);
+  const segments = url.pathname === "/" ? ["!root!"] : url.pathname.slice(1).split("/").map(safeComponent);
   const path = segments.join("/");
   // Keep paths usable on local filesystems. exchange.json keeps the complete URL path.
   if (path.length > 96) {
-    return `${path.slice(0, 80).replace(/[/.]+$/, "")}~more~`;
+    return `${path.slice(0, 80).replace(/[/.]+$/, "")}!more!`;
   }
   return path;
 }
