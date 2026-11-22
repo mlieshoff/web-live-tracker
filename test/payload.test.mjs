@@ -71,7 +71,7 @@ test("exportPayloads separates repeated exchanges and escapes unsafe path names"
       ? [file, JSON.parse(text)]
       : [file, text]),
   }, {
-    bases: ["web-live-tracker/study/2026-01-03/example.test/~reserved~CON.txt/~2e~~2e~~25~2F/~empty~"],
+    bases: ["web-live-tracker/study/2026-01-03/example.test/!reserved!CON.txt/!2e!!2e!!25!2F/!empty!"],
     count: 2,
     files: Array.from({ length: 2 }, () => [
       ["request.txt", "request"],
@@ -148,11 +148,44 @@ test("exportPayloads escapes Chromium-reserved names in both the domain and path
 
   await exportPayloads(downloads, "study", [exchange], new Date(2026, 0, 3));
 
-  const prefix = "web-live-tracker/study/2026-01-03/example~2e~local/assets/" +
-    "~reserved~desktop.ini/~reserved~THUMBS.DB/a~2e~LNK/b~2e~scf/c~2e~url/photo.png";
+  const prefix = "web-live-tracker/study/2026-01-03/example!2e!local/assets/" +
+    "!reserved!desktop.ini/!reserved!THUMBS.DB/a!2e!LNK/b!2e!scf/c!2e!url/photo.png";
   assert.deepEqual(attempted.map((filename) => filename.replace(/\/[^/]+\/([^/]+)$/, "/$1")), [
     `${prefix}/response.bin`,
     `${prefix}/exchange.json`,
+  ]);
+});
+
+test("exportPayloads gives root, empty, and shortened URL paths portable folder names", async () => {
+  const files = [];
+  const downloads = {
+    onChanged: { addListener() {}, removeListener() {} },
+    async download({ url, filename }) {
+      const { url: originalUrl } = await (await fetch(url)).json();
+      files.push({ filename, originalUrl });
+      return files.length;
+    },
+    async search() {
+      return [{ state: "complete" }];
+    },
+  };
+  const paths = ["/", "/us//static/images/example.png", "/!empty!", `/${"x".repeat(120)}`];
+  const exchanges = paths.map((path) => ({
+    metadata: { ...metadata, url: `https://example.test${path}` },
+    request: { status: "absent" },
+    response: { status: "unavailable" },
+  }));
+
+  await exportPayloads(downloads, "study", exchanges, new Date(2026, 0, 3));
+
+  assert.deepEqual(files.map(({ filename, originalUrl }) => [
+    filename.split("/").slice(4, -2).join("/"),
+    originalUrl,
+  ]), [
+    ["!root!", "https://example.test/"],
+    ["us/!empty!/static/images/example.png", "https://example.test/us//static/images/example.png"],
+    ["!21!empty!21!", "https://example.test/!empty!"],
+    [`${"x".repeat(80)}!more!`, `https://example.test${paths[3]}`],
   ]);
 });
 
