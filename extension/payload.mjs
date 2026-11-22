@@ -1,5 +1,30 @@
 import { DownloadError, downloadFile, exportFolder, jsonFile } from "./export.mjs";
 
+const fileExtensions = new Map([
+  ["application/gzip", "gz"],
+  ["application/json", "json"],
+  ["application/pdf", "pdf"],
+  ["application/zip", "zip"],
+  ["audio/flac", "flac"],
+  ["audio/mpeg", "mp3"],
+  ["audio/ogg", "ogg"],
+  ["audio/wav", "wav"],
+  ["audio/webm", "webm"],
+  ["image/avif", "avif"],
+  ["image/bmp", "bmp"],
+  ["image/gif", "gif"],
+  ["image/jpeg", "jpg"],
+  ["image/png", "png"],
+  ["image/tiff", "tiff"],
+  ["image/webp", "webp"],
+  ["text/csv", "csv"],
+  ["text/plain", "txt"],
+  ["text/tab-separated-values", "tsv"],
+  ["video/mp4", "mp4"],
+  ["video/ogg", "ogv"],
+  ["video/webm", "webm"],
+]);
+
 function bodyStatus(status, data) {
   return { status, data };
 }
@@ -51,8 +76,10 @@ async function responseBody(entry) {
 
 export async function capturePayload(entry, metadata) {
   const request = requestBody(entry.request);
+  const requestMediaType = entry.request.postData?.mimeType ||
+    entry.request.headers?.find(({ name }) => name.toLowerCase() === "content-type")?.value;
   const response = await responseBody(entry);
-  return { metadata, request, response };
+  return { metadata, request, response, requestMediaType };
 }
 
 function safeComponent(value) {
@@ -77,15 +104,20 @@ function exchangePath(url) {
   return path;
 }
 
-async function saveBody(saveFile, base, name, body) {
+async function saveBody(saveFile, base, name, body, mediaType) {
   if (body.status !== "saved") {
     return null;
   }
   const text = typeof body.data === "string";
-  const filename = `${name}.${text ? "txt" : "bin"}`;
-  const type = text ? "text/plain;charset=utf-8" : "application/octet-stream";
-  const saved = await saveFile(`${base}/${filename}`, new Blob([body.data], { type }));
-  return saved ? filename : null;
+  const declaredType = mediaType?.split(";", 1)[0].trim().toLowerCase();
+  const knownType = declaredType?.startsWith("application/") && declaredType.endsWith("+json")
+    ? "application/json"
+    : declaredType;
+  const knownExtension = fileExtensions.get(knownType);
+  const extension = knownExtension ?? (text ? "txt" : "bin");
+  const type = knownExtension ? knownType : (text ? "text/plain;charset=utf-8" : "application/octet-stream");
+  const filename = `${name}.${extension}`;
+  return saveFile(`${base}/${filename}`, new Blob([body.data], { type }));
 }
 
 export async function exportPayloads(downloads, researchId, exchanges, date) {
@@ -94,22 +126,22 @@ export async function exportPayloads(downloads, researchId, exchanges, date) {
   const result = { saved: 0, failed: 0, reason: null };
   async function saveFile(filename, data) {
     try {
-      await downloadFile(downloads, filename, data);
+      const savedName = await downloadFile(downloads, filename, data);
       result.saved += 1;
-      return true;
+      return savedName;
     } catch (error) {
       result.failed += 1;
       result.reason ??= error instanceof DownloadError ? error.message : "The file could not be saved.";
-      return false;
+      return null;
     }
   }
   for (const [index, exchange] of exchanges.entries()) {
-    const { metadata, request, response } = exchange;
+    const { metadata, request, response, requestMediaType } = exchange;
     const url = new URL(metadata.url);
     const id = `${batch}-${index + 1}`;
     const base = `${folder}/${safeComponent(url.host)}/${exchangePath(url)}/${id}`;
-    const requestFile = await saveBody(saveFile, base, "request", request);
-    const responseFile = await saveBody(saveFile, base, "response", response);
+    const requestFile = await saveBody(saveFile, base, "request", request, requestMediaType);
+    const responseFile = await saveBody(saveFile, base, "response", response, metadata.mediaType);
     await saveFile(`${base}/exchange.json`, jsonFile({
       ...metadata,
       requestBody: request.status === "saved" && !requestFile ? "download-failed" : request.status,

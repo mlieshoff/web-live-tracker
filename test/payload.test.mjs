@@ -21,6 +21,7 @@ test("capturePayload preserves request text and decodes DevTools binary represen
     metadata,
     request: { status: "saved", data: "  sample\n" },
     response: { status: "saved", data: Uint8Array.of(0, 1, 255, 128) },
+    requestMediaType: undefined,
   });
 });
 
@@ -149,5 +150,76 @@ test("exportPayloads escapes Chromium-reserved names in both the domain and path
   assert.deepEqual(attempted.map((filename) => filename.replace(/\/[^/]+\/([^/]+)$/, "/$1")), [
     `${prefix}/response.bin`,
     `${prefix}/exchange.json`,
+  ]);
+});
+
+test("exportPayloads names request and response files independently and records Chrome's final name", async () => {
+  const files = [];
+  const downloads = {
+    onChanged: { addListener() {}, removeListener() {} },
+    async download({ url, filename }) {
+      const response = await fetch(url);
+      files.push({
+        name: filename.split("/").at(-1),
+        type: response.headers.get("content-type"),
+        bytes: [...new Uint8Array(await response.arrayBuffer())],
+      });
+      return files.length;
+    },
+    async search({ id }) {
+      const name = id === 2 ? "response (1).png" : files[id - 1].name;
+      return [{ state: "complete", filename: `/browser-downloads/${name}` }];
+    },
+  };
+  const exchange = await capturePayload({
+    request: {
+      method: "POST",
+      headers: [{ name: "CONTENT-TYPE", value: "Application/vnd.example+JSON; charset=utf-8" }],
+      postData: { text: "{}" },
+    },
+    response: { status: 200 },
+    getContent: (callback) => callback("AAH/gA==", "base64"),
+  }, { ...metadata, mediaType: "Image/PNG" });
+
+  await exportPayloads(downloads, "study", [exchange], new Date(2026, 0, 3));
+
+  const index = JSON.parse(new TextDecoder().decode(Uint8Array.from(files[2].bytes)));
+  assert.deepEqual({
+    bodies: files.slice(0, 2),
+    indexedNames: [index.requestFile, index.responseFile],
+  }, {
+    bodies: [
+      { name: "request.json", type: "application/json", bytes: [123, 125] },
+      { name: "response.png", type: "image/png", bytes: [0, 1, 255, 128] },
+    ],
+    indexedNames: ["request.json", "response (1).png"],
+  });
+});
+
+test("exportPayloads uses neutral text and binary types for active or unknown media", async () => {
+  const types = [];
+  const downloads = {
+    onChanged: { addListener() {}, removeListener() {} },
+    async download({ url, filename }) {
+      types.push([filename.split("/").at(-1), (await fetch(url)).headers.get("content-type")]);
+      return types.length;
+    },
+    async search() {
+      return [{ state: "complete" }];
+    },
+  };
+  const exchange = {
+    metadata: { ...metadata, mediaType: "application/x-unknown" },
+    requestMediaType: "text/html",
+    request: { status: "saved", data: "<p>Fixture</p>" },
+    response: { status: "saved", data: Uint8Array.of(0, 1, 255) },
+  };
+
+  await exportPayloads(downloads, "study", [exchange], new Date(2026, 0, 3));
+
+  assert.deepEqual(types, [
+    ["request.txt", "text/plain;charset=utf-8"],
+    ["response.bin", "application/octet-stream"],
+    ["exchange.json", "application/json"],
   ]);
 });

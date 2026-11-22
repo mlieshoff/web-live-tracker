@@ -42,10 +42,10 @@ function waitForDownload(downloads, id) {
       reject(error);
     }
 
-    function complete(state, reason) {
+    function complete(state, reason, filename) {
       if (state === "complete") {
         downloads.onChanged.removeListener(onChanged);
-        resolve();
+        resolve(filename);
       } else if (state === "interrupted") {
         fail(new DownloadError(downloadMessages.get(reason) ?? "The download was interrupted."));
       }
@@ -61,7 +61,7 @@ function waitForDownload(downloads, id) {
     // A small export may finish before the download ID reaches this listener.
     downloads.search({ id }).then(([item]) => {
       if (item) {
-        complete(item.state, item.error);
+        complete(item.state, item.error, item.filename);
       } else {
         fail(new DownloadError("Chrome could not find the download."));
       }
@@ -79,7 +79,9 @@ export async function downloadFile(downloads, filename, data) {
   const url = URL.createObjectURL(data);
   try {
     const id = await downloads.download({ url, filename, conflictAction: "uniquify" });
-    await waitForDownload(downloads, id);
+    const completedPath = await waitForDownload(downloads, id);
+    const actualPath = completedPath || (await downloads.search({ id }).catch(() => []))[0]?.filename;
+    return (actualPath || filename).split(/[\\/]/).at(-1);
   } catch (error) {
     if (error instanceof DownloadError) {
       throw error;
