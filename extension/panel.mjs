@@ -7,7 +7,7 @@ const stop = document.querySelector("#stop");
 const status = document.querySelector("#capture-status");
 const idError = document.querySelector("#research-id-error");
 const saveErrors = document.querySelector("#save-errors");
-const saveErrorCount = document.querySelector("#save-error-count");
+const saveErrorSummary = document.querySelector("#save-error-summary");
 const saveErrorLimit = document.querySelector("#save-error-limit");
 const saveErrorList = document.querySelector("#save-error-list");
 const capturedCount = document.querySelector("#captured-count");
@@ -32,7 +32,7 @@ function showSaveErrors(failed, errorCount, errors) {
 
   displayedErrors = errors;
   const label = failed === 1 ? "exchange" : "exchanges";
-  showText(saveErrorCount, `(${errorCount} in ${failed} ${label})`);
+  showText(saveErrorSummary, `Save errors (${errorCount} in ${failed} ${label})`);
   saveErrorLimit.hidden = errors.length === errorCount;
   showText(saveErrorLimit, `Showing the latest ${errors.length} of ${errorCount} errors.`);
   saveErrorList.replaceChildren(...errors.map(({ target, reason }) => {
