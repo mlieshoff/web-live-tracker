@@ -1,35 +1,57 @@
-# web-live-tracker
+# Web Live Tracker
 
-Chrome plugin to track and persist web traffic.
+Web Live Tracker is a Chrome extension that saves the network requests and responses Chrome makes available for the tab you’re inspecting. Enter a research ID, start capture, and browse as usual. Completed exchanges are saved to disk as you go.
 
-## First version
+For a German walkthrough with a real website example, see the [German installation and usage guide](README_DE.md).
 
-1. Open `chrome://extensions`, enable **Developer mode**, then use **Load unpacked** to select the `extension` folder.
-2. Open DevTools in the tab you want to observe and select **Web Live Tracker** from the DevTools tabs or overflow menu.
-3. Enter a research ID and select **Start capture**, then reload the page or perform the actions you want to observe. Completed requests are saved as you browse.
-4. Select **Stop capture** when finished. Keep DevTools open until the pending count reaches zero. Chrome may prompt for a location depending on its download settings.
+## Install in Chrome
 
-### Payload files
+1. Download and extract the project ZIP. If you already have a local copy, use that folder. [Download ZIP](https://github.com/mlieshoff/web-live-tracker/archive/refs/heads/main.zip)
+2. Type `chrome://extensions` into Chrome’s address bar and press Enter.
+3. Turn on **Developer mode** and select **Load unpacked**.
+4. Select the `extension` folder inside the extracted project. It contains [manifest.json](extension/manifest.json). Confirm that **Web Live Tracker** appears in the extensions list and is enabled.
 
-Starting capture saves the raw bodies Chrome DevTools makes available. The files go under `web-live-tracker/<research-id>/YYYY-MM-DD/<domain>/<url-path>/<exchange-id>/` in Chrome downloads. The date is the browser's local date when the request started. Each exchange has an `exchange.json` with the body availability and the full URL path, including when the folder name had to be shortened or escaped.
+Chrome loads the extension from that folder, so keep it in place. After updating the files, use the reload button on the extension’s card and reopen DevTools.
 
-Chrome decodes HTTP response compression such as gzip. Bodies with recognized media types use their usual extensions, such as `.json`, `.png`, `.jpg`, or `.pdf`. If the media type is missing, generic, or unrecognized, the exporter checks binary signatures for common formats. Unidentified bodies and active content such as HTML and JavaScript use `.txt` for UTF-8 text or `.bin` for bytes. Compressed uploads and upload data Chrome does not expose are marked unavailable. An application file such as a downloadable `.gz` archive is kept as content. Saved payloads can contain sensitive data.
+## Capture a tab
 
-Captures are kept in memory until DevTools closes. Starting capture again appends to the same record. Exports contain the timestamp, method, URL origin and path, status code, and media type when available. URL paths may themselves contain information you do not want to share.
+1. Open the website in Chrome. Right-click the page and select **Inspect** to open Chrome DevTools.
+2. Select **Web Live Tracker** in the DevTools tab bar. If it’s hidden, open the **»** overflow menu.
+3. Enter a **Research ID**, such as `my-first-capture`. Start with a letter or number and use up to 64 letters, numbers, hyphens, or underscores. Reserved folder names such as `CON` are rejected.
+4. Select **Start capture**, reload the page to include its initial requests, and interact with it as usual. **Files saved** increases as Chrome writes files.
+5. Select **Stop capture** when finished. Keep DevTools open until **Pending exchanges** reaches **0**. The research ID can be changed once the pending saves finish.
 
-Run the regression tests with `node --test`.
+Starting capture saves any available raw request and response bodies. These files can contain private information. Use a public page without signing in for a first test and review files before sharing them.
 
-## Idea
+## Find and read the files
 
-As a user I can install and start the plugin in Chrome, do some basic setup:
+The base folder is Chrome’s configured download location. To find it, open `chrome://downloads` and use the folder icon next to a saved file, or check the location at `chrome://settings/downloads`.
 
-* where to download all the captured data (requests/ responses / media)
-* a flag to tell the plugin to store unzipped gzip'ed data
-* a flag to support storing somehow dated, so i can have a view on what and when something was changed between some days within the same research 
+```text
+web-live-tracker/<research-id>/<YYYY-MM-DD>/<host>/<URL-path>/<exchange-id>/
+  exchange.json
+  request.json
+  response.png
+```
 
-The plugin will handle these topics for me:
+The filenames above are examples. Each exchange has its own folder, so repeated requests to the same URL stay separate. The date is the browser’s local date when the request started. A URL path may be escaped or shortened to make a valid folder name. The full captured URL origin and path remain in `exchange.json`.
 
-* storing will happen on my hard-disk
-* depending on content / media type processable data will be stored
-* unknown media types will be stored also regarding on a media type detection
-* storing will happen in a human-logical folder structure where i can define a research id as a base folder to separate the work between different sites
+- **`exchange.json`** records the request time, method, URL, response status and media type, and the names and availability of the body files. Open it in a text editor. The recorded URL omits the query string and fragment.
+- **`request.*`** contains data the browser sent when Chrome provides the body. A request that sends no body has no request file.
+- **`response.*`** contains data the website sent back when Chrome provides the body. Open a `.png` or `.jpg` in an image viewer and a `.json` or `.txt` in a text editor.
+
+The tracker uses the declared media type or a recognizable binary signature to choose a file extension. Unidentified and active content uses `.txt` or `.bin`. Chrome decodes HTTP compression such as gzip for responses. Downloadable archive files are saved as archives. Compressed uploads and other bodies Chrome cannot provide are marked unavailable.
+
+## Troubleshooting
+
+| What you see | What to check |
+| --- | --- |
+| **Web Live Tracker** is missing | Check that the extension is enabled at `chrome://extensions`. Reopen DevTools in the website tab and look under **»**. |
+| The request count stays at zero | Check that the panel says **Capturing.** and reload the website while capture is active. |
+| Chrome prompts for each file | Check **Ask where to save each file before downloading** at `chrome://settings/downloads`. Turning it off lets Chrome use its configured download folder automatically. |
+| Some files fail to save | Read the error in the panel and check `chrome://downloads` for the download status. Other exchanges may still save. |
+| A folder contains only `exchange.json` | Look at `requestBody` and `responseBody` to see whether the body was absent, unavailable, or failed to save. |
+
+## Development
+
+Run the automated tests from the repository root with `node --test`. The extension itself loads directly from `extension/`.
