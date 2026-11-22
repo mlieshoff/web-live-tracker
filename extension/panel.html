@@ -29,7 +29,11 @@
         <div><dt>Files saved</dt><dd id="saved-count">0</dd></div>
         <div><dt>Pending exchanges</dt><dd id="pending-count">0</dd></div>
       </dl>
-      <p id="save-error" class="error-message save-error" role="status"></p>
+      <details id="save-errors" class="save-errors" hidden>
+        <summary>Save errors <span id="save-error-count" role="status"></span></summary>
+        <p id="save-error-limit" class="save-error-limit" hidden></p>
+        <ul id="save-error-list"></ul>
+      </details>
     </main>
   </body>
 </html>
