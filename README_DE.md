@@ -15,11 +15,12 @@ Web Live Tracker speichert beim Surfen Dateien auf deinem Computer. Du startest 
 
 1. Öffne den Einmaleins-Schnelltest in einem neuen Chrome-Tab. Du kannst die Übung ohne Anmeldung ausprobieren. [Einmaleins-Schnelltest öffnen](https://www.timestables.com/speed-test/)
 2. Klicke mit der rechten Maustaste auf eine freie Stelle der Webseite und wähle **Untersuchen**. Chrome öffnet die Entwicklerwerkzeuge, meist seitlich oder unten im Fenster.
-3. Klicke in der Leiste dieses Bereichs auf **Web Live Tracker**. Wenn der Name fehlt, klicke in der Leiste auf **»** und suche ihn dort.
-4. Tippe `einmaleins-test` in **Research ID** ein. Das ist der Name, unter dem du die Dateien später wiederfindest.
-5. Klicke im Tracker auf **Start capture**. Sobald **Capturing.** erscheint, lade die Webseite mit dem runden Pfeil neben der Adressleiste neu. So zeichnet der Tracker auch auf, was Chrome beim Laden der Seite abruft.
-6. Wähle auf der Webseite zum Beispiel die **7** und klicke dort auf **Start**. Löse ein paar Aufgaben. Mit **Answer** bestätigst du deine Eingabe. Im Tracker zeigt **Files saved**, wie viele Dateien Chrome bereits gespeichert hat.
-7. Klicke im Tracker auf **Stop capture**. Warte, bis **Pending exchanges 0** angezeigt wird. Jetzt kannst du die Entwicklerwerkzeuge schließen.
+3. Deaktiviere am besten vor der Aufzeichnung den Browser-Cache. Öffne dazu in den Entwicklerwerkzeugen **Netzwerk** (englisch **Network**) und setze oben das Häkchen bei **Cache deaktivieren** (englisch **Disable cache**). So ruft Chrome beim Neuladen mehr Inhalte frisch ab. Die Einstellung wirkt, solange die Entwicklerwerkzeuge geöffnet sind. [Chrome-Hilfe zum Browser-Cache](https://developer.chrome.com/docs/devtools/network/reference?hl=de#disable-cache)
+4. Wechsle zurück zu **Web Live Tracker**. Wenn der Name fehlt, klicke in der Leiste auf **»** und suche ihn dort.
+5. Tippe `einmaleins-test` in **Research ID** ein. Das ist der Name, unter dem du die Dateien später wiederfindest.
+6. Klicke im Tracker auf **Start capture**. Sobald **Capturing.** erscheint, lade die Webseite mit dem runden Pfeil neben der Adressleiste neu. So zeichnet der Tracker auch auf, was Chrome beim Laden der Seite abruft.
+7. Wähle auf der Webseite zum Beispiel die **7** und klicke dort auf **Start**. Löse ein paar Aufgaben. Mit **Answer** bestätigst du deine Eingabe. Im Tracker zeigt **Files saved**, wie viele Dateien Chrome bereits gespeichert hat.
+8. Klicke im Tracker auf **Stop capture**. Warte, bis **Pending exchanges 0** angezeigt wird. Jetzt kannst du die Entwicklerwerkzeuge schließen.
 
 Falls Chrome beim Speichern nach einem Ablageort fragt, findest du die Einstellung dafür unter `chrome://settings/downloads`. Wenn du die Nachfrage ausschaltest, verwendet Chrome den dort eingestellten Download-Ordner automatisch.
 
