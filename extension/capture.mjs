@@ -19,6 +19,12 @@ export function createCapture(requestFinished, onRecord, now = Date.now) {
       status: entry.response.status,
       mediaType: entry.response.content?.mimeType || null,
     };
+    if (metadata.status === 206) {
+      const range = entry.response.headers?.find(({ name }) => name.toLowerCase() === "content-range")?.value;
+      if (typeof range === "string" && /^bytes \d+-\d+\/(?:\d+|\*)$/i.test(range.trim())) {
+        metadata.responseRange = range.trim();
+      }
+    }
     onRecord(entry, metadata);
   }
 

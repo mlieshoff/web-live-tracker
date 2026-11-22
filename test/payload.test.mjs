@@ -38,6 +38,20 @@ test("capturePayload marks an unsupported compressed upload and a missing respon
   assert.deepEqual([exchange.request.status, exchange.response.status], ["unavailable", "absent"]);
 });
 
+test("capturePayload marks an empty DevTools result as unavailable when response bytes were expected", async () => {
+  const exchange = await capturePayload({
+    request: { method: "GET", bodySize: 0 },
+    response: { status: 200, content: { mimeType: "video/mp4", size: 24 * 1024 * 1024 } },
+    getContent: (callback) => callback("", ""),
+  }, metadata);
+
+  assert.deepEqual(exchange.response, {
+    status: "unavailable",
+    data: undefined,
+    reason: "Chrome DevTools did not retain the response body.",
+  });
+});
+
 test("exportPayloads separates repeated exchanges and escapes unsafe path names", async () => {
   const files = new Map();
   const downloads = {
@@ -280,6 +294,8 @@ test("exportPayloads detects recognizable binary content only when a declared ty
   const png = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0xff];
   const pdf = [0x25, 0x50, 0x44, 0x46, 0x2d];
   const truncated = png.slice(0, 7);
+  const mp4 = [0, 0, 0, 24, 0x66, 0x74, 0x79, 0x70, 0x69, 0x73, 0x6f, 0x6d];
+  const mp3 = [0x49, 0x44, 0x33];
   const cases = [
     ["application/octet-stream", png],
     ["application/x-unknown", png],
@@ -287,6 +303,8 @@ test("exportPayloads detects recognizable binary content only when a declared ty
     ["image/jpeg", png],
     ["text/html", png],
     [null, truncated],
+    ["application/octet-stream", mp4],
+    ["audio/mpeg", mp3],
   ];
   const exchanges = cases.map(([mediaType, bytes]) => ({
     metadata: { ...metadata, mediaType },
@@ -307,7 +325,9 @@ test("exportPayloads detects recognizable binary content only when a declared ty
       { name: "response.jpg", type: "image/jpeg", bytes: png },
       { name: "response.bin", type: "application/octet-stream", bytes: png },
       { name: "response.bin", type: "application/octet-stream", bytes: truncated },
+      { name: "response.mp4", type: "video/mp4", bytes: mp4 },
+      { name: "response.mp3", type: "audio/mpeg", bytes: mp3 },
     ],
-    indexedNames: ["response.png", "response.png", "response.pdf", "response.jpg", "response.bin", "response.bin"],
+    indexedNames: ["response.png", "response.png", "response.pdf", "response.jpg", "response.bin", "response.bin", "response.mp4", "response.mp3"],
   });
 });
