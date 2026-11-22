@@ -6,7 +6,7 @@ For a German walkthrough with a real website example, see the [German installati
 
 ## Install in Chrome
 
-1. Download and extract the project ZIP. If you already have a local copy, use that folder. [Download ZIP](https://github.com/mlieshoff/web-live-tracker/archive/refs/heads/main.zip)
+1. Extract `web-live-tracker.zip` if you received a package. If you’re viewing the project on GitHub, use **Code → Download ZIP** and extract it. If you already have the project files, use that folder.
 2. Type `chrome://extensions` into Chrome’s address bar and press Enter.
 3. Turn on **Developer mode** and select **Load unpacked**.
 4. Select the `extension` folder inside the extracted project. It contains [manifest.json](extension/manifest.json). Confirm that **Web Live Tracker** appears in the extensions list and is enabled.
@@ -55,3 +55,11 @@ The tracker uses the declared media type or a recognizable binary signature to c
 ## Development
 
 Run the automated tests from the repository root with `node --test`. The extension itself loads directly from `extension/`.
+
+To create an installable ZIP, run this from the project root in a shell with Git available. On Windows, use Git Bash.
+
+```sh
+sh scripts/package-extension.sh
+```
+
+The command writes `web-live-tracker.zip` to the project root. It packages the committed extension and both guides from the current commit. You can share the ZIP directly.
