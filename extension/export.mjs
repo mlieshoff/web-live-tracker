@@ -12,27 +12,22 @@ const downloadMessages = new Map([
 
 export class DownloadError extends Error {}
 
-export function exportFolder(researchId, exportDate) {
+export function validateResearchId(researchId) {
   if (
+    typeof researchId !== "string" ||
     !/^[a-z0-9][a-z0-9_-]{0,63}$/i.test(researchId) ||
     reservedName.test(researchId)
   ) {
     throw new Error("Use 1–64 letters, numbers, hyphens or underscores. Begin with a letter or number and avoid reserved names such as CON.");
   }
-
-  const folder = `web-live-tracker/${researchId}`;
-  if (exportDate === undefined) {
-    return folder;
-  }
-
-  const year = String(exportDate.getFullYear()).padStart(4, "0");
-  const month = String(exportDate.getMonth() + 1).padStart(2, "0");
-  const day = String(exportDate.getDate()).padStart(2, "0");
-  return `${folder}/${year}-${month}-${day}`;
 }
 
-export function exportFilename(researchId, exportDate) {
-  return `${exportFolder(researchId, exportDate)}/traffic.json`;
+export function exportFolder(researchId, captureDate) {
+  validateResearchId(researchId);
+  const year = String(captureDate.getFullYear()).padStart(4, "0");
+  const month = String(captureDate.getMonth() + 1).padStart(2, "0");
+  const day = String(captureDate.getDate()).padStart(2, "0");
+  return `web-live-tracker/${researchId}/${year}-${month}-${day}`;
 }
 
 function waitForDownload(downloads, id) {
@@ -97,9 +92,4 @@ export async function downloadFile(downloads, filename, data) {
   } finally {
     URL.revokeObjectURL(url);
   }
-}
-
-export async function exportCapture(downloads, researchId, records, exportDate) {
-  const filename = exportFilename(researchId, exportDate);
-  return downloadFile(downloads, filename, jsonFile({ researchId, requests: records }));
 }
