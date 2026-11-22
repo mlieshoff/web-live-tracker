@@ -3,13 +3,17 @@ import { DownloadError, downloadFile, exportFolder, jsonFile } from "./export.mj
 const fileExtensions = new Map([
   ["application/gzip", "gz"],
   ["application/json", "json"],
+  ["application/mp4", "mp4"],
   ["application/pdf", "pdf"],
   ["application/zip", "zip"],
+  ["audio/aac", "aac"],
   ["audio/flac", "flac"],
+  ["audio/mp4", "m4a"],
   ["audio/mpeg", "mp3"],
   ["audio/ogg", "ogg"],
   ["audio/wav", "wav"],
   ["audio/webm", "webm"],
+  ["audio/x-m4a", "m4a"],
   ["image/avif", "avif"],
   ["image/bmp", "bmp"],
   ["image/gif", "gif"],
@@ -21,8 +25,13 @@ const fileExtensions = new Map([
   ["text/plain", "txt"],
   ["text/tab-separated-values", "tsv"],
   ["video/mp4", "mp4"],
+  ["video/mp2t", "ts"],
+  ["video/mpeg", "mpeg"],
   ["video/ogg", "ogv"],
+  ["video/quicktime", "mov"],
   ["video/webm", "webm"],
+  ["video/x-m4v", "m4v"],
+  ["video/x-matroska", "mkv"],
 ]);
 
 const activeTypes = new Set([
@@ -61,6 +70,13 @@ function detectMediaType(bytes) {
   if (header.startsWith("fLaC")) return "audio/flac";
   if (header.startsWith("RIFF") && header.slice(8) === "WEBP") return "image/webp";
   if (header.startsWith("RIFF") && header.slice(8) === "WAVE") return "audio/wav";
+  if (header.length === 12 && header.slice(4, 8) === "ftyp") {
+    const brand = header.slice(8);
+    if (brand === "M4A ") return "audio/mp4";
+    if (["isom", "iso2", "iso4", "iso5", "iso6", "mp41", "mp42", "M4V "].includes(brand)) {
+      return "video/mp4";
+    }
+  }
   return undefined;
 }
 
@@ -87,27 +103,28 @@ async function responseBody(entry) {
   }
 
   let timer;
+  const unavailable = (reason) => ({ ...bodyStatus("unavailable"), reason });
   try {
     return await new Promise((resolve) => {
-      timer = setTimeout(() => resolve(bodyStatus("unavailable")), 5000);
+      timer = setTimeout(() => resolve(unavailable("Chrome DevTools did not provide the response body in time.")), 5000);
       entry.getContent((content, encoding) => {
-        if (typeof content !== "string") {
-          resolve(bodyStatus("unavailable"));
+        if (typeof content !== "string" || (content.length === 0 && entry.response.content?.size > 0)) {
+          resolve(unavailable("Chrome DevTools did not retain the response body."));
         } else if (!encoding) {
           resolve(bodyStatus("saved", content));
         } else if (encoding === "base64") {
           try {
             resolve(bodyStatus("saved", Uint8Array.from(atob(content), (byte) => byte.charCodeAt(0))));
           } catch {
-            resolve(bodyStatus("unavailable"));
+            resolve(unavailable("Chrome DevTools returned an invalid base64 response body."));
           }
         } else {
-          resolve(bodyStatus("unavailable"));
+          resolve(unavailable("Chrome DevTools returned an unsupported response encoding."));
         }
       });
     });
   } catch {
-    return bodyStatus("unavailable");
+    return unavailable("Chrome DevTools could not read the response body.");
   } finally {
     clearTimeout(timer);
   }
@@ -189,6 +206,7 @@ export async function exportPayloads(downloads, researchId, exchanges, date) {
       ...metadata,
       requestBody: request.status === "saved" && !requestFile ? "download-failed" : request.status,
       responseBody: response.status === "saved" && !responseFile ? "download-failed" : response.status,
+      responseUnavailableReason: response.reason,
       requestFile,
       responseFile,
     }));

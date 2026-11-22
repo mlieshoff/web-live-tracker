@@ -40,6 +40,8 @@ The filenames above are examples. Each exchange has its own folder, so repeated 
 - **`request.*`** contains data the browser sent when Chrome provides the body. A request that sends no body has no request file.
 - **`response.*`** contains data the website sent back when Chrome provides the body. Open a `.png` or `.jpg` in an image viewer and a `.json` or `.txt` in a text editor.
 
+Audio and video can arrive as byte ranges. For HTTP 206 responses, `responseRange` in `exchange.json` records the range when the server provides it. A saved range can be only part of a media file. When Chrome withholds a body, `responseUnavailableReason` records why the file is missing. Streams that never finish do not produce a completed exchange.
+
 The tracker uses the declared media type or a recognizable binary signature to choose a file extension. Unidentified and active content uses `.txt` or `.bin`. Chrome decodes HTTP compression such as gzip for responses. Downloadable archive files are saved as archives. Compressed uploads and other bodies Chrome cannot provide are marked unavailable.
 
 ## Troubleshooting

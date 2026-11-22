@@ -81,3 +81,21 @@ test("capture skips non-web schemes and represents missing media types as null",
 
   assert.deepEqual(types, [null]);
 });
+
+test("capture retains the server's byte range for a partial media response", () => {
+  const event = networkEvent();
+  const records = [];
+  const capture = createCapture(event, (_, metadata) => records.push(metadata), () => startTime);
+  capture.start();
+
+  event.emit({
+    ...entry,
+    response: {
+      status: 206,
+      content: { mimeType: "video/mp4" },
+      headers: [{ name: "Content-Range", value: "bytes 0-39/1133" }],
+    },
+  });
+
+  assert.equal(records[0].responseRange, "bytes 0-39/1133");
+});
