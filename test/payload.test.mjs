@@ -123,3 +123,31 @@ test("exportPayloads reports a blocked file and still saves later payloads and m
     responseFile: "response.txt",
   });
 });
+
+test("exportPayloads escapes Chromium-reserved names in both the domain and path", async () => {
+  const attempted = [];
+  const downloads = {
+    onChanged: { addListener() {}, removeListener() {} },
+    async download({ filename }) {
+      attempted.push(filename);
+      return attempted.length;
+    },
+    async search() {
+      return [{ state: "complete" }];
+    },
+  };
+  const exchange = {
+    metadata: { ...metadata, url: "https://example.local/assets/desktop.ini/THUMBS.DB/a.LNK/b.scf/c.url/photo.png" },
+    request: { status: "absent" },
+    response: { status: "saved", data: Uint8Array.of(1, 2, 3) },
+  };
+
+  await exportPayloads(downloads, "study", [exchange], new Date(2026, 0, 3));
+
+  const prefix = "web-live-tracker/study/2026-01-03/example~2e~local/assets/" +
+    "~reserved~desktop.ini/~reserved~THUMBS.DB/a~2e~LNK/b~2e~scf/c~2e~url/photo.png";
+  assert.deepEqual(attempted.map((filename) => filename.replace(/\/[^/]+\/([^/]+)$/, "/$1")), [
+    `${prefix}/response.bin`,
+    `${prefix}/exchange.json`,
+  ]);
+});

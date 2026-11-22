@@ -56,11 +56,12 @@ export async function capturePayload(entry, metadata) {
 }
 
 function safeComponent(value) {
-  // Encode special characters and protect device names on Windows.
+  // Chrome checks every component against its portable filename rules.
   const safe = value.replace(/[^a-z0-9._-]/gi, (character) =>
     `~${character.charCodeAt(0).toString(16)}~`
-  ).replace(/^\.+|\.+$/g, (dots) => "~2e~".repeat(dots.length));
-  if (/^(con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\.|$)/i.test(safe)) {
+  ).replace(/^\.+|\.+$/g, (dots) => "~2e~".repeat(dots.length))
+    .replace(/\.(local|lnk|scf|url)$/i, "~2e~$1");
+  if (/^(con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\.|$)|^(desktop\.ini|thumbs\.db)$/i.test(safe)) {
     return `~reserved~${safe}`;
   }
   return safe || "~empty~";
