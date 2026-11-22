@@ -33,11 +33,12 @@ function networkEvent() {
 
 test("capture records only the allowed metadata from a finished request", () => {
   const event = networkEvent();
-  const capture = createCapture(event, () => {}, () => startTime);
+  const records = [];
+  const capture = createCapture(event, (_, metadata) => records.push(metadata), () => startTime);
   capture.start();
   event.emit(entry);
 
-  assert.deepEqual(capture.getRecords(), [
+  assert.deepEqual(records, [
     {
       timestamp: entry.startedDateTime,
       method: "POST",
@@ -52,8 +53,8 @@ test("capture excludes other event sources, inactive periods and pre-start reque
   const inspectedTab = networkEvent();
   const otherTab = networkEvent();
   let time = startTime;
-  const counts = [];
-  const capture = createCapture(inspectedTab, (count) => counts.push(count), () => time);
+  const accepted = [];
+  const capture = createCapture(inspectedTab, (request) => accepted.push(request), () => time);
 
   inspectedTab.emit(entry);
   capture.start();
@@ -67,15 +68,16 @@ test("capture excludes other event sources, inactive periods and pre-start reque
   capture.start();
   inspectedTab.emit(entry);
 
-  assert.deepEqual(counts, [1]);
+  assert.deepEqual(accepted, [entry]);
 });
 
 test("capture skips non-web schemes and represents missing media types as null", () => {
   const event = networkEvent();
-  const capture = createCapture(event, () => {}, () => startTime);
+  const types = [];
+  const capture = createCapture(event, (_, metadata) => types.push(metadata.mediaType), () => startTime);
   capture.start();
   event.emit({ ...entry, request: { ...entry.request, url: "data:text/plain,example" } });
   event.emit({ ...entry, response: { status: 204 } });
 
-  assert.deepEqual(capture.getRecords().map(({ mediaType }) => mediaType), [null]);
+  assert.deepEqual(types, [null]);
 });

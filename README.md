@@ -6,10 +6,14 @@ Chrome plugin to track and persist web traffic.
 
 1. Open `chrome://extensions`, enable **Developer mode**, then use **Load unpacked** to select the `extension` folder.
 2. Open DevTools in the tab you want to observe and select **Web Live Tracker** from the DevTools tabs or overflow menu.
-3. Select **Start capture**, then reload the page or perform the actions you want to observe. Select **Stop capture** when finished.
-4. Enter a research ID and select **Export JSON**. By default Chrome saves the export in `web-live-tracker/<research-id>/traffic.json` under its configured downloads location. Chrome may prompt for a location depending on your download settings.
+3. Enter a research ID and select **Start capture**, then reload the page or perform the actions you want to observe. Completed requests are saved as you browse.
+4. Select **Stop capture** when finished. Keep DevTools open until the pending count reaches zero. Chrome may prompt for a location depending on its download settings.
 
-Select **Group exports by date** to save under `web-live-tracker/<research-id>/YYYY-MM-DD/traffic.json`. The folder uses the local date when you select **Export JSON**. This option starts off when you open a new DevTools session.
+### Payload files
+
+Starting capture saves the raw bodies Chrome DevTools makes available. The files go under `web-live-tracker/<research-id>/YYYY-MM-DD/<domain>/<url-path>/<exchange-id>/` in Chrome downloads. The date is the browser's local date when the request started. Each exchange has an `exchange.json` with the body availability and the full URL path, including when the folder name had to be shortened or escaped.
+
+Chrome decodes HTTP response compression such as gzip. Bodies with recognized media types use their usual extensions, such as `.json`, `.png`, `.jpg`, or `.pdf`. If the media type is missing, generic, or unrecognized, the exporter checks binary signatures for common formats. Unidentified bodies and active content such as HTML and JavaScript use `.txt` for UTF-8 text or `.bin` for bytes. Compressed uploads and upload data Chrome does not expose are marked unavailable. An application file such as a downloadable `.gz` archive is kept as content. Saved payloads can contain sensitive data.
 
 Captures are kept in memory until DevTools closes. Starting capture again appends to the same record. Exports contain the timestamp, method, URL origin and path, status code, and media type when available. URL paths may themselves contain information you do not want to share.
 

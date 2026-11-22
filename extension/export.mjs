@@ -1,22 +1,33 @@
 const reservedName = /^(con|prn|aux|nul|com[1-9]|lpt[1-9])$/i;
 
-export function exportFilename(researchId, exportDate) {
+const downloadMessages = new Map([
+  ["FILE_ACCESS_DENIED", "Chrome could not write to the download destination."],
+  ["FILE_NAME_TOO_LONG", "The download path is too long."],
+  ["FILE_NO_SPACE", "The download destination is out of space."],
+  ["FILE_BLOCKED", "Chrome blocked the file."],
+  ["FILE_FAILED", "Chrome could not create the file. Check the downloads folder and its permissions."],
+  ["FILE_SECURITY_CHECK_FAILED", "The file did not pass Chrome’s download security check."],
+  ["USER_CANCELED", "The download was canceled."],
+]);
+
+export class DownloadError extends Error {}
+
+export function validateResearchId(researchId) {
   if (
+    typeof researchId !== "string" ||
     !/^[a-z0-9][a-z0-9_-]{0,63}$/i.test(researchId) ||
     reservedName.test(researchId)
   ) {
     throw new Error("Use 1–64 letters, numbers, hyphens or underscores. Begin with a letter or number and avoid reserved names such as CON.");
   }
+}
 
-  const folder = `web-live-tracker/${researchId}`;
-  if (exportDate === undefined) {
-    return `${folder}/traffic.json`;
-  }
-
-  const year = String(exportDate.getFullYear()).padStart(4, "0");
-  const month = String(exportDate.getMonth() + 1).padStart(2, "0");
-  const day = String(exportDate.getDate()).padStart(2, "0");
-  return `${folder}/${year}-${month}-${day}/traffic.json`;
+export function exportFolder(researchId, captureDate) {
+  validateResearchId(researchId);
+  const year = String(captureDate.getFullYear()).padStart(4, "0");
+  const month = String(captureDate.getMonth() + 1).padStart(2, "0");
+  const day = String(captureDate.getDate()).padStart(2, "0");
+  return `web-live-tracker/${researchId}/${year}-${month}-${day}`;
 }
 
 function waitForDownload(downloads, id) {
@@ -26,18 +37,18 @@ function waitForDownload(downloads, id) {
       reject(error);
     }
 
-    function complete(state) {
+    function complete(state, reason, filename) {
       if (state === "complete") {
         downloads.onChanged.removeListener(onChanged);
-        resolve();
+        resolve(filename);
       } else if (state === "interrupted") {
-        fail(new Error("The download was interrupted."));
+        fail(new DownloadError(downloadMessages.get(reason) ?? "The download was interrupted."));
       }
     }
 
     function onChanged(change) {
       if (change.id === id) {
-        complete(change.state?.current);
+        complete(change.state?.current, change.error?.current);
       }
     }
 
@@ -45,23 +56,39 @@ function waitForDownload(downloads, id) {
     // A small export may finish before the download ID reaches this listener.
     downloads.search({ id }).then(([item]) => {
       if (item) {
-        complete(item.state);
+        complete(item.state, item.error, item.filename);
       } else {
-        fail(new Error("Chrome could not find the download."));
+        fail(new DownloadError("Chrome could not find the download."));
       }
     }, fail);
   });
 }
 
-export async function exportCapture(downloads, researchId, records, exportDate) {
-  const filename = exportFilename(researchId, exportDate);
-  const data = new Blob([JSON.stringify({ researchId, requests: records }, null, 2) + "\n"], {
+export function jsonFile(data) {
+  return new Blob([JSON.stringify(data, null, 2) + "\n"], {
     type: "application/json",
   });
+}
+
+export async function downloadFile(downloads, filename, data) {
   const url = URL.createObjectURL(data);
   try {
     const id = await downloads.download({ url, filename, conflictAction: "uniquify" });
-    await waitForDownload(downloads, id);
+    const completedPath = await waitForDownload(downloads, id);
+    const actualPath = completedPath || (await downloads.search({ id }).catch(() => []))[0]?.filename;
+    return (actualPath || filename).split(/[\\/]/).at(-1);
+  } catch (error) {
+    if (error instanceof DownloadError) {
+      throw error;
+    }
+    const message = String(error?.message ?? "");
+    if (/invalid filename/i.test(message)) {
+      throw new DownloadError("Chrome rejected the download filename.");
+    }
+    if (/failed to start/i.test(message)) {
+      throw new DownloadError("The download failed to start. Check Chrome Downloads.");
+    }
+    throw new DownloadError("Chrome could not save the file. Check Chrome Downloads.");
   } finally {
     URL.revokeObjectURL(url);
   }

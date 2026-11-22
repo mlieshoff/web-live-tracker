@@ -10,19 +10,16 @@
   <body>
     <main>
       <h1>Web Live Tracker</h1>
-      <p>Capture request metadata for this tab while DevTools is open.</p>
-      <button id="start" type="button">Start capture</button>
-      <button id="stop" type="button" disabled>Stop capture</button>
-      <p id="capture-status" role="status">Capture stopped. 0 requests captured.</p>
-      <form id="export-form">
+      <p id="save-location">Starting capture automatically saves raw request and response bodies for this tab under web-live-tracker in Chrome downloads.</p>
+      <form id="capture-form">
         <label for="research-id">Research ID</label>
         <input id="research-id" type="text" maxlength="64" autocomplete="off"
-          spellcheck="false" aria-describedby="export-location">
-        <button id="save" type="submit" disabled>Export JSON</button>
-        <p><label><input id="dated-folders" type="checkbox"> Group exports by date</label></p>
-        <p id="export-location">Saves under web-live-tracker in your Chrome downloads folder.</p>
-        <p id="export-status" role="status"></p>
+          spellcheck="false" required aria-describedby="research-id-error">
+        <button id="start" type="submit" disabled aria-describedby="save-location">Start capture</button>
+        <button id="stop" type="button" disabled>Stop capture</button>
+        <p id="research-id-error" role="alert"></p>
       </form>
+      <p id="capture-status" role="status">Capture stopped.</p>
     </main>
   </body>
 </html>

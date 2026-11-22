@@ -1,5 +1,4 @@
 export function createCapture(requestFinished, onRecord, now = Date.now) {
-  const records = [];
   let startedAt = null;
 
   function record(entry) {
@@ -13,14 +12,14 @@ export function createCapture(requestFinished, onRecord, now = Date.now) {
       return;
     }
 
-    records.push({
+    const metadata = {
       timestamp: new Date(timestamp).toISOString(),
       method: entry.request.method,
       url: url.origin + url.pathname,
       status: entry.response.status,
       mediaType: entry.response.content?.mimeType || null,
-    });
-    onRecord(records.length);
+    };
+    onRecord(entry, metadata);
   }
 
   return {
@@ -33,9 +32,6 @@ export function createCapture(requestFinished, onRecord, now = Date.now) {
     stop() {
       startedAt = null;
       requestFinished.removeListener(record);
-    },
-    getRecords() {
-      return records.map((record) => ({ ...record }));
     },
   };
 }
