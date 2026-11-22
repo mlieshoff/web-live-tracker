@@ -11,6 +11,12 @@ Chrome plugin to track and persist web traffic.
 
 Select **Group exports by date** to save under `web-live-tracker/<research-id>/YYYY-MM-DD/traffic.json`. The folder uses the local date when you select **Export JSON**. This option starts off when you open a new DevTools session.
 
+### Payload files
+
+Select **Capture raw request and response bodies** before starting capture. After stopping, enter a research ID and select **Export payload files**. The files go under `web-live-tracker/<research-id>/YYYY-MM-DD/<domain>/<url-path>/<exchange-id>/`. The export uses the bodies Chrome DevTools makes available. Each exchange has an `exchange.json` with the body availability and the full URL path, including when the folder name had to be shortened or escaped.
+
+Chrome decodes HTTP response compression such as gzip. DevTools text is saved as UTF-8 in `.txt` files and base64-encoded responses are saved as bytes in `.bin` files. Compressed uploads and upload data Chrome does not expose are marked unavailable. An application file such as a downloadable `.gz` archive is kept as content. Payloads can contain sensitive data and remain in memory until DevTools closes.
+
 Captures are kept in memory until DevTools closes. Starting capture again appends to the same record. Exports contain the timestamp, method, URL origin and path, status code, and media type when available. URL paths may themselves contain information you do not want to share.
 
 Run the regression tests with `node --test`.

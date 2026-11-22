@@ -13,14 +13,15 @@ export function createCapture(requestFinished, onRecord, now = Date.now) {
       return;
     }
 
-    records.push({
+    const metadata = {
       timestamp: new Date(timestamp).toISOString(),
       method: entry.request.method,
       url: url.origin + url.pathname,
       status: entry.response.status,
       mediaType: entry.response.content?.mimeType || null,
-    });
-    onRecord(records.length);
+    };
+    records.push(metadata);
+    onRecord(records.length, entry, metadata);
   }
 
   return {

@@ -1,6 +1,6 @@
 const reservedName = /^(con|prn|aux|nul|com[1-9]|lpt[1-9])$/i;
 
-export function exportFilename(researchId, exportDate) {
+export function exportFolder(researchId, exportDate) {
   if (
     !/^[a-z0-9][a-z0-9_-]{0,63}$/i.test(researchId) ||
     reservedName.test(researchId)
@@ -10,13 +10,17 @@ export function exportFilename(researchId, exportDate) {
 
   const folder = `web-live-tracker/${researchId}`;
   if (exportDate === undefined) {
-    return `${folder}/traffic.json`;
+    return folder;
   }
 
   const year = String(exportDate.getFullYear()).padStart(4, "0");
   const month = String(exportDate.getMonth() + 1).padStart(2, "0");
   const day = String(exportDate.getDate()).padStart(2, "0");
-  return `${folder}/${year}-${month}-${day}/traffic.json`;
+  return `${folder}/${year}-${month}-${day}`;
+}
+
+export function exportFilename(researchId, exportDate) {
+  return `${exportFolder(researchId, exportDate)}/traffic.json`;
 }
 
 function waitForDownload(downloads, id) {
@@ -53,11 +57,13 @@ function waitForDownload(downloads, id) {
   });
 }
 
-export async function exportCapture(downloads, researchId, records, exportDate) {
-  const filename = exportFilename(researchId, exportDate);
-  const data = new Blob([JSON.stringify({ researchId, requests: records }, null, 2) + "\n"], {
+export function jsonFile(data) {
+  return new Blob([JSON.stringify(data, null, 2) + "\n"], {
     type: "application/json",
   });
+}
+
+export async function downloadFile(downloads, filename, data) {
   const url = URL.createObjectURL(data);
   try {
     const id = await downloads.download({ url, filename, conflictAction: "uniquify" });
@@ -65,4 +71,9 @@ export async function exportCapture(downloads, researchId, records, exportDate) 
   } finally {
     URL.revokeObjectURL(url);
   }
+}
+
+export async function exportCapture(downloads, researchId, records, exportDate) {
+  const filename = exportFilename(researchId, exportDate);
+  return downloadFile(downloads, filename, jsonFile({ researchId, requests: records }));
 }
