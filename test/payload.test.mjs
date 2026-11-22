@@ -223,3 +223,55 @@ test("exportPayloads uses neutral text and binary types for active or unknown me
     ["exchange.json", "application/json"],
   ]);
 });
+
+test("exportPayloads detects recognizable binary content only when a declared type does not take precedence", async () => {
+  const files = [];
+  const downloads = {
+    onChanged: { addListener() {}, removeListener() {} },
+    async download({ url, filename }) {
+      const response = await fetch(url);
+      files.push({
+        name: filename.split("/").at(-1),
+        type: response.headers.get("content-type"),
+        bytes: [...new Uint8Array(await response.arrayBuffer())],
+      });
+      return files.length;
+    },
+    async search() {
+      return [{ state: "complete" }];
+    },
+  };
+  const png = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0xff];
+  const pdf = [0x25, 0x50, 0x44, 0x46, 0x2d];
+  const truncated = png.slice(0, 7);
+  const cases = [
+    ["application/octet-stream", png],
+    ["application/x-unknown", png],
+    [null, pdf],
+    ["image/jpeg", png],
+    ["text/html", png],
+    [null, truncated],
+  ];
+  const exchanges = cases.map(([mediaType, bytes]) => ({
+    metadata: { ...metadata, mediaType },
+    request: { status: "absent" },
+    response: { status: "saved", data: Uint8Array.from(bytes) },
+  }));
+
+  await exportPayloads(downloads, "study", exchanges, new Date(2026, 0, 3));
+
+  const bodies = files.filter(({ name }) => name !== "exchange.json");
+  const indexedNames = files.filter(({ name }) => name === "exchange.json")
+    .map(({ bytes }) => JSON.parse(new TextDecoder().decode(Uint8Array.from(bytes))).responseFile);
+  assert.deepEqual({ bodies, indexedNames }, {
+    bodies: [
+      { name: "response.png", type: "image/png", bytes: png },
+      { name: "response.png", type: "image/png", bytes: png },
+      { name: "response.pdf", type: "application/pdf", bytes: pdf },
+      { name: "response.jpg", type: "image/jpeg", bytes: png },
+      { name: "response.bin", type: "application/octet-stream", bytes: png },
+      { name: "response.bin", type: "application/octet-stream", bytes: truncated },
+    ],
+    indexedNames: ["response.png", "response.png", "response.pdf", "response.jpg", "response.bin", "response.bin"],
+  });
+});

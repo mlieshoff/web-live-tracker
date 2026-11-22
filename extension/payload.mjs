@@ -25,6 +25,45 @@ const fileExtensions = new Map([
   ["video/webm", "webm"],
 ]);
 
+const activeTypes = new Set([
+  "application/ecmascript",
+  "application/javascript",
+  "application/xhtml+xml",
+  "image/svg+xml",
+  "text/ecmascript",
+  "text/html",
+  "text/javascript",
+]);
+
+const binarySignatures = [
+  ["image/png", [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]],
+  ["image/jpeg", [0xff, 0xd8, 0xff]],
+  ["application/gzip", [0x1f, 0x8b, 0x08]],
+  ["application/zip", [0x50, 0x4b, 0x03, 0x04]],
+  ["application/zip", [0x50, 0x4b, 0x05, 0x06]],
+];
+
+function detectMediaType(bytes) {
+  if (!(bytes instanceof Uint8Array)) {
+    return undefined;
+  }
+
+  const match = binarySignatures.find(([, signature]) =>
+    signature.every((byte, index) => bytes[index] === byte)
+  );
+  if (match) {
+    return match[0];
+  }
+
+  const header = String.fromCharCode(...bytes.subarray(0, 12));
+  if (header.startsWith("GIF87a") || header.startsWith("GIF89a")) return "image/gif";
+  if (header.startsWith("%PDF-")) return "application/pdf";
+  if (header.startsWith("fLaC")) return "audio/flac";
+  if (header.startsWith("RIFF") && header.slice(8) === "WEBP") return "image/webp";
+  if (header.startsWith("RIFF") && header.slice(8) === "WAVE") return "audio/wav";
+  return undefined;
+}
+
 function bodyStatus(status, data) {
   return { status, data };
 }
@@ -110,9 +149,11 @@ async function saveBody(saveFile, base, name, body, mediaType) {
   }
   const text = typeof body.data === "string";
   const declaredType = mediaType?.split(";", 1)[0].trim().toLowerCase();
-  const knownType = declaredType?.startsWith("application/") && declaredType.endsWith("+json")
+  const normalizedType = declaredType?.startsWith("application/") && declaredType.endsWith("+json")
     ? "application/json"
     : declaredType;
+  const knownType = fileExtensions.has(normalizedType) ? normalizedType
+    : activeTypes.has(normalizedType) ? undefined : detectMediaType(body.data);
   const knownExtension = fileExtensions.get(knownType);
   const extension = knownExtension ?? (text ? "txt" : "bin");
   const type = knownExtension ? knownType : (text ? "text/plain;charset=utf-8" : "application/octet-stream");
