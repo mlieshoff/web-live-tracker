@@ -4,11 +4,11 @@ Web Live Tracker speichert beim Surfen Dateien auf deinem Computer. Du startest 
 
 ## 1. Erweiterung herunterladen und installieren
 
-1. Lade die ZIP-Datei auf deinen Computer. [Web Live Tracker herunterladen](https://github.com/mlieshoff/web-live-tracker/archive/refs/heads/main.zip)
-2. Öffne deinen Downloads-Ordner. Klicke mit der rechten Maustaste auf `web-live-tracker-main.zip` und wähle **Entpacken** oder **Alle extrahieren**. Die genaue Bezeichnung hängt von deinem Computer ab.
+1. Wenn du `web-live-tracker.zip` bekommen hast, speichere die Datei auf deinem Computer. Wenn du das Projekt auf GitHub geöffnet hast, klicke oben auf **Code** und dann auf **Download ZIP**.
+2. Öffne den Ordner, in dem die ZIP-Datei liegt. Klicke mit der rechten Maustaste auf die Datei und wähle **Entpacken** oder **Alle extrahieren**. Die genaue Bezeichnung hängt von deinem Computer ab.
 3. Öffne Google Chrome. Gib oben in der Adressleiste `chrome://extensions` ein und drücke die Eingabetaste.
 4. Schalte oben rechts den **Entwicklermodus** ein. Klicke auf **Entpackte Erweiterung laden**. Bei englischer Oberfläche heißt die Schaltfläche **Load unpacked**.
-5. Öffne im Auswahlfenster den entpackten Ordner `web-live-tracker-main`. Wähle darin den Unterordner `extension` aus und bestätige die Auswahl. In diesem Unterordner liegt die Datei `manifest.json`.
+5. Öffne im Auswahlfenster den entpackten Projektordner, zum Beispiel `web-live-tracker` oder `web-live-tracker-main`. Wähle darin den Unterordner `extension` aus und bestätige die Auswahl. In diesem Unterordner liegt die Datei `manifest.json`.
 6. Prüfe, ob in Chrome eine Karte mit dem Namen **Web Live Tracker** erscheint und der Schalter darauf eingeschaltet ist. Lass den entpackten Ordner auf deinem Computer liegen. Chrome verwendet die Dateien aus diesem Ordner.
 
 ## 2. Eine erste Aufzeichnung machen
@@ -50,3 +50,13 @@ Die genauen Dateien hängen davon ab, was die Seite bei deinem Besuch lädt. Man
 Benutze für die erste Übung eine öffentliche Seite ohne Anmeldung. In einer Aufzeichnung können auch private Inhalte stehen, wenn du währenddessen Formulare ausfüllst oder angemeldet surfst. Sieh dir die Dateien an, bevor du sie weitergibst.
 
 [Zur englischen Projektübersicht](README.md)
+
+## ZIP-Datei zum Weitergeben erstellen
+
+Wenn du eine Git-Kopie des Projekts hast, öffne im Projektordner ein Terminal. Unter Windows kannst du dafür Git Bash verwenden. Führe diesen Befehl aus.
+
+```sh
+sh scripts/package-extension.sh
+```
+
+Danach liegt `web-live-tracker.zip` direkt im Projektordner. Die ZIP enthält die Erweiterung und beide Anleitungen aus dem aktuellen Git-Stand. Für die Installation reicht es, die ZIP-Datei weiterzugeben.
