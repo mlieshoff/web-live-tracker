@@ -76,14 +76,17 @@ exportForm.addEventListener("submit", async (event) => {
   exportStatus.textContent = "Exporting…";
   try {
     if (exportBodies) {
-      await exportPayloads(chrome.downloads, id, await Promise.all(payloads), exportDate);
+      const result = await exportPayloads(chrome.downloads, id, await Promise.all(payloads), exportDate);
+      exportStatus.textContent = result.failed
+        ? `Payload export saved ${result.saved} of ${result.saved + result.failed} files. ${result.reason}`
+        : "Export saved. See Chrome downloads for the files.";
     } else {
       await exportCapture(chrome.downloads, id, capture.getRecords(), exportDate);
+      exportStatus.textContent = "Export saved. See Chrome downloads for the file.";
     }
-    exportStatus.textContent = "Export saved. See Chrome downloads for the file.";
   } catch {
     exportStatus.textContent = exportBodies
-      ? "Payload export failed. Some files may already be in Chrome downloads."
+      ? "Payload export could not prepare the captured files."
       : "Export failed. Check Chrome downloads and try again.";
   } finally {
     start.disabled = false;

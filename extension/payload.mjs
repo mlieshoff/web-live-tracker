@@ -1,4 +1,4 @@
-import { downloadFile, exportFolder, jsonFile } from "./export.mjs";
+import { DownloadError, downloadFile, exportFolder, jsonFile } from "./export.mjs";
 
 function bodyStatus(status, data) {
   return { status, data };
@@ -76,33 +76,46 @@ function exchangePath(url) {
   return path;
 }
 
-async function saveBody(downloads, base, name, body) {
+async function saveBody(saveFile, base, name, body) {
   if (body.status !== "saved") {
     return null;
   }
   const text = typeof body.data === "string";
   const filename = `${name}.${text ? "txt" : "bin"}`;
   const type = text ? "text/plain;charset=utf-8" : "application/octet-stream";
-  await downloadFile(downloads, `${base}/${filename}`, new Blob([body.data], { type }));
-  return filename;
+  const saved = await saveFile(`${base}/${filename}`, new Blob([body.data], { type }));
+  return saved ? filename : null;
 }
 
 export async function exportPayloads(downloads, researchId, exchanges, date) {
   const folder = exportFolder(researchId, date);
   const batch = crypto.randomUUID().slice(0, 18);
+  const result = { saved: 0, failed: 0, reason: null };
+  async function saveFile(filename, data) {
+    try {
+      await downloadFile(downloads, filename, data);
+      result.saved += 1;
+      return true;
+    } catch (error) {
+      result.failed += 1;
+      result.reason ??= error instanceof DownloadError ? error.message : "The file could not be saved.";
+      return false;
+    }
+  }
   for (const [index, exchange] of exchanges.entries()) {
     const { metadata, request, response } = exchange;
     const url = new URL(metadata.url);
     const id = `${batch}-${index + 1}`;
     const base = `${folder}/${safeComponent(url.host)}/${exchangePath(url)}/${id}`;
-    const requestFile = await saveBody(downloads, base, "request", request);
-    const responseFile = await saveBody(downloads, base, "response", response);
-    await downloadFile(downloads, `${base}/exchange.json`, jsonFile({
+    const requestFile = await saveBody(saveFile, base, "request", request);
+    const responseFile = await saveBody(saveFile, base, "response", response);
+    await saveFile(`${base}/exchange.json`, jsonFile({
       ...metadata,
-      requestBody: request.status,
-      responseBody: response.status,
+      requestBody: request.status === "saved" && !requestFile ? "download-failed" : request.status,
+      responseBody: response.status === "saved" && !responseFile ? "download-failed" : response.status,
       requestFile,
       responseFile,
     }));
   }
+  return result;
 }

@@ -1,5 +1,17 @@
 const reservedName = /^(con|prn|aux|nul|com[1-9]|lpt[1-9])$/i;
 
+const downloadMessages = new Map([
+  ["FILE_ACCESS_DENIED", "Chrome could not write to the download destination."],
+  ["FILE_NAME_TOO_LONG", "The download path is too long."],
+  ["FILE_NO_SPACE", "The download destination is out of space."],
+  ["FILE_BLOCKED", "Chrome blocked the file."],
+  ["FILE_FAILED", "Chrome could not create the file. Check the downloads folder and its permissions."],
+  ["FILE_SECURITY_CHECK_FAILED", "The file did not pass Chrome’s download security check."],
+  ["USER_CANCELED", "The download was canceled."],
+]);
+
+export class DownloadError extends Error {}
+
 export function exportFolder(researchId, exportDate) {
   if (
     !/^[a-z0-9][a-z0-9_-]{0,63}$/i.test(researchId) ||
@@ -30,18 +42,18 @@ function waitForDownload(downloads, id) {
       reject(error);
     }
 
-    function complete(state) {
+    function complete(state, reason) {
       if (state === "complete") {
         downloads.onChanged.removeListener(onChanged);
         resolve();
       } else if (state === "interrupted") {
-        fail(new Error("The download was interrupted."));
+        fail(new DownloadError(downloadMessages.get(reason) ?? "The download was interrupted."));
       }
     }
 
     function onChanged(change) {
       if (change.id === id) {
-        complete(change.state?.current);
+        complete(change.state?.current, change.error?.current);
       }
     }
 
@@ -49,9 +61,9 @@ function waitForDownload(downloads, id) {
     // A small export may finish before the download ID reaches this listener.
     downloads.search({ id }).then(([item]) => {
       if (item) {
-        complete(item.state);
+        complete(item.state, item.error);
       } else {
-        fail(new Error("Chrome could not find the download."));
+        fail(new DownloadError("Chrome could not find the download."));
       }
     }, fail);
   });
@@ -68,6 +80,18 @@ export async function downloadFile(downloads, filename, data) {
   try {
     const id = await downloads.download({ url, filename, conflictAction: "uniquify" });
     await waitForDownload(downloads, id);
+  } catch (error) {
+    if (error instanceof DownloadError) {
+      throw error;
+    }
+    const message = String(error?.message ?? "");
+    if (/invalid filename/i.test(message)) {
+      throw new DownloadError("Chrome rejected the download filename.");
+    }
+    if (/failed to start/i.test(message)) {
+      throw new DownloadError("The download failed to start. Check Chrome Downloads.");
+    }
+    throw new DownloadError("Chrome could not save the file. Check Chrome Downloads.");
   } finally {
     URL.revokeObjectURL(url);
   }

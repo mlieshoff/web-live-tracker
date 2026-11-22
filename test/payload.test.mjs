@@ -81,3 +81,45 @@ test("exportPayloads separates repeated exchanges and escapes unsafe path names"
     ]).flat(),
   });
 });
+
+test("exportPayloads reports a blocked file and still saves later payloads and metadata", async () => {
+  const files = new Map();
+  let savedMetadata;
+  const downloads = {
+    onChanged: { addListener() {}, removeListener() {} },
+    async download({ url, filename }) {
+      const id = files.size + 1;
+      files.set(id, filename);
+      if (filename.endsWith("/exchange.json") && !savedMetadata) {
+        savedMetadata = await (await fetch(url)).json();
+      }
+      return id;
+    },
+    async search({ id }) {
+      return [id === 1
+        ? { state: "interrupted", error: "FILE_ACCESS_DENIED" }
+        : { state: "complete" }];
+    },
+  };
+  const exchange = {
+    metadata,
+    request: { status: "saved", data: "request" },
+    response: { status: "saved", data: "response" },
+  };
+
+  const result = await exportPayloads(downloads, "study", [exchange, exchange], new Date(2026, 0, 3));
+
+  assert.deepEqual({
+    result,
+    attempted: files.size,
+    requestStatus: savedMetadata.requestBody,
+    requestFile: savedMetadata.requestFile,
+    responseFile: savedMetadata.responseFile,
+  }, {
+    result: { saved: 5, failed: 1, reason: "Chrome could not write to the download destination." },
+    attempted: 6,
+    requestStatus: "download-failed",
+    requestFile: null,
+    responseFile: "response.txt",
+  });
+});
