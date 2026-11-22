@@ -207,6 +207,8 @@ export async function exportPayloads(downloads, researchId, exchanges, date) {
       requestBody: request.status === "saved" && !requestFile ? "download-failed" : request.status,
       responseBody: response.status === "saved" && !responseFile ? "download-failed" : response.status,
       responseUnavailableReason: response.reason,
+      responseSource: response.source,
+      responseRetryError: response.retryError,
       requestFile,
       responseFile,
     }));

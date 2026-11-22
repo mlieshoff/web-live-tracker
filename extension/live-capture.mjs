@@ -1,5 +1,6 @@
 import { createCapture } from "./capture.mjs";
 import { validateResearchId } from "./export.mjs";
+import { prepareMediaRetry, retryUnavailableMedia } from "./media-retry.mjs";
 import { capturePayload, exportPayloads } from "./payload.mjs";
 
 const errorHistoryLimit = 30;
@@ -28,6 +29,7 @@ export function createLiveCapture(requestFinished, downloads, onStatus, now = Da
   const capture = createCapture(requestFinished, (entry, metadata) => {
     const id = researchId;
     const date = new Date(metadata.timestamp);
+    const retry = prepareMediaRetry(entry, metadata);
     // Read the response while DevTools still has it, and write files in capture order.
     const payload = capturePayload(entry, metadata).catch(() => null);
     captured += 1;
@@ -38,6 +40,7 @@ export function createLiveCapture(requestFinished, downloads, onStatus, now = Da
         if (!exchange) {
           throw new Error("Payload unavailable");
         }
+        exchange.response = await retryUnavailableMedia(retry, exchange.response);
         const result = await exportPayloads(downloads, id, [exchange], date);
         saved += result.saved;
         if (result.errors.length) {
