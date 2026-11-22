@@ -77,7 +77,7 @@ test("live capture saves while active and drains under the original ID after sto
     "web-live-tracker/study/2026-01-01/example.test/second/response.txt",
     "web-live-tracker/study/2026-01-01/example.test/second/exchange.json",
   ]);
-  assert.deepEqual(lastStatus, { active: false, captured: 2, pending: 0, saved: 4, failed: 0, reason: null });
+  assert.deepEqual(lastStatus, { active: false, captured: 2, pending: 0, saved: 4, failed: 0, errorCount: 0, errors: [] });
 });
 
 test("live capture reports a failed exchange and saves subsequent files", async () => {
@@ -85,12 +85,14 @@ test("live capture reports a failed exchange and saves subsequent files", async 
   const event = networkEvent();
   let lastStatus;
   let attempts = 0;
+  const failedPaths = [];
   const downloads = {
     onChanged: { addListener() {}, removeListener() {} },
     async download({ filename }) {
       attempts += 1;
       if (filename.includes("/blocked/")) {
-        throw new Error("Invalid filename");
+        failedPaths.push(filename);
+        throw new Error(filename.endsWith("response.txt") ? "Invalid filename" : "Download failed to start.");
       }
       return attempts;
     },
@@ -113,6 +115,47 @@ test("live capture reports a failed exchange and saves subsequent files", async 
     pending: 0,
     saved: 2,
     failed: 1,
-    reason: "Chrome rejected the download filename.",
+    errorCount: 2,
+    errors: [
+      { target: failedPaths[0], reason: "Chrome rejected the download filename." },
+      { target: failedPaths[1], reason: "The download failed to start. Check Chrome Downloads." },
+    ],
+  });
+});
+
+test("live capture keeps the latest error details and clears them for a new capture", async () => {
+  const date = new Date(2026, 0, 1);
+  const event = networkEvent();
+  let lastStatus;
+  const downloads = {
+    async download() {
+      throw new Error("Invalid filename");
+    },
+  };
+  const capture = createLiveCapture(event, downloads, (status) => {
+    lastStatus = status;
+  }, () => date.getTime() - 1);
+
+  capture.start("study");
+  for (let index = 0; index < 16; index += 1) {
+    event.emit(entry(`failed-${index}`, date));
+  }
+  await capture.stop();
+  const failedCapture = lastStatus;
+  capture.start("next-study");
+  await capture.stop();
+
+  assert.deepEqual({
+    errorCount: failedCapture.errorCount,
+    historyLength: failedCapture.errors.length,
+    firstRetainedExchange: failedCapture.errors[0].target.split("/").at(-3),
+    newCount: lastStatus.errorCount,
+    newHistory: lastStatus.errors,
+  }, {
+    errorCount: 32,
+    historyLength: 30,
+    firstRetainedExchange: "failed-1",
+    newCount: 0,
+    newHistory: [],
   });
 });

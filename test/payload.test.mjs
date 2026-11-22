@@ -117,7 +117,10 @@ test("exportPayloads reports a blocked file and still saves later payloads and m
     requestFile: savedMetadata.requestFile,
     responseFile: savedMetadata.responseFile,
   }, {
-    result: { saved: 5, failed: 1, reason: "Chrome could not write to the download destination." },
+    result: {
+      saved: 5,
+      errors: [{ target: files.get(1), reason: "Chrome could not write to the download destination." }],
+    },
     attempted: 6,
     requestStatus: "download-failed",
     requestFile: null,

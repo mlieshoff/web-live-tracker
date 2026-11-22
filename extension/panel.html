@@ -9,17 +9,31 @@
   </head>
   <body>
     <main>
-      <h1>Web Live Tracker</h1>
-      <p id="save-location">Starting capture automatically saves raw request and response bodies for this tab under web-live-tracker in Chrome downloads.</p>
-      <form id="capture-form">
+      <header class="panel-header">
+        <h1>Web Live Tracker</h1>
+        <p id="capture-status" class="capture-status" data-state="stopped" role="status" tabindex="-1">Capture stopped.</p>
+      </header>
+      <form id="capture-form" class="capture-form">
         <label for="research-id">Research ID</label>
         <input id="research-id" type="text" maxlength="64" autocomplete="off"
-          spellcheck="false" required aria-describedby="research-id-error">
-        <button id="start" type="submit" disabled aria-describedby="save-location">Start capture</button>
-        <button id="stop" type="button" disabled>Stop capture</button>
-        <p id="research-id-error" role="alert"></p>
+          spellcheck="false" placeholder="my-first-capture" required aria-describedby="research-id-error">
+        <p id="research-id-error" class="error-message" role="alert"></p>
+        <div class="capture-actions">
+          <button id="start" type="submit" disabled aria-describedby="save-location">Start capture</button>
+          <button id="stop" type="button" disabled>Stop capture</button>
+        </div>
+        <p id="save-location" class="save-location">Saves raw request and response bodies from this tab in Chrome downloads under <code>web-live-tracker</code>.</p>
       </form>
-      <p id="capture-status" role="status">Capture stopped.</p>
+      <dl class="capture-counts">
+        <div><dt>Requests captured</dt><dd id="captured-count">0</dd></div>
+        <div><dt>Files saved</dt><dd id="saved-count">0</dd></div>
+        <div><dt>Pending exchanges</dt><dd id="pending-count">0</dd></div>
+      </dl>
+      <details id="save-errors" class="save-errors" hidden>
+        <summary id="save-error-summary">Save errors</summary>
+        <p id="save-error-limit" class="save-error-limit" hidden></p>
+        <ul id="save-error-list"></ul>
+      </details>
     </main>
   </body>
 </html>

@@ -164,15 +164,17 @@ async function saveBody(saveFile, base, name, body, mediaType) {
 export async function exportPayloads(downloads, researchId, exchanges, date) {
   const folder = exportFolder(researchId, date);
   const batch = crypto.randomUUID().slice(0, 18);
-  const result = { saved: 0, failed: 0, reason: null };
+  const result = { saved: 0, errors: [] };
   async function saveFile(filename, data) {
     try {
       const savedName = await downloadFile(downloads, filename, data);
       result.saved += 1;
       return savedName;
     } catch (error) {
-      result.failed += 1;
-      result.reason ??= error instanceof DownloadError ? error.message : "The file could not be saved.";
+      result.errors.push({
+        target: filename,
+        reason: error instanceof DownloadError ? error.message : "The file could not be saved.",
+      });
       return null;
     }
   }

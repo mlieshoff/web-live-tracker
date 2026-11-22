@@ -2,6 +2,8 @@ import { createCapture } from "./capture.mjs";
 import { validateResearchId } from "./export.mjs";
 import { capturePayload, exportPayloads } from "./payload.mjs";
 
+const errorHistoryLimit = 30;
+
 export function createLiveCapture(requestFinished, downloads, onStatus, now = Date.now) {
   let researchId;
   let active = false;
@@ -10,10 +12,17 @@ export function createLiveCapture(requestFinished, downloads, onStatus, now = Da
   let pending = 0;
   let saved = 0;
   let failed = 0;
-  let reason = null;
+  let errorCount = 0;
+  let errors = [];
 
   function publish() {
-    onStatus({ active, captured, pending, saved, failed, reason });
+    onStatus({ active, captured, pending, saved, failed, errorCount, errors });
+  }
+
+  function recordErrors(entries) {
+    failed += 1;
+    errorCount += entries.length;
+    errors = [...errors, ...entries].slice(-errorHistoryLimit);
   }
 
   const capture = createCapture(requestFinished, (entry, metadata) => {
@@ -31,13 +40,14 @@ export function createLiveCapture(requestFinished, downloads, onStatus, now = Da
         }
         const result = await exportPayloads(downloads, id, [exchange], date);
         saved += result.saved;
-        if (result.failed) {
-          failed += 1;
-          reason ??= result.reason;
+        if (result.errors.length) {
+          recordErrors(result.errors);
         }
       } catch {
-        failed += 1;
-        reason ??= "An exchange could not be prepared for saving.";
+        recordErrors([{
+          target: `${metadata.method} ${metadata.url}`,
+          reason: "This exchange could not be prepared for saving.",
+        }]);
       } finally {
         pending -= 1;
         publish();
@@ -56,7 +66,8 @@ export function createLiveCapture(requestFinished, downloads, onStatus, now = Da
       captured = 0;
       saved = 0;
       failed = 0;
-      reason = null;
+      errorCount = 0;
+      errors = [];
       capture.start();
       active = true;
       publish();
