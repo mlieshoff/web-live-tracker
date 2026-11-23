@@ -5,7 +5,7 @@ import { capturePayload, exportPayloads } from "./payload.mjs";
 
 const errorHistoryLimit = 30;
 
-export function createLiveCapture(requestFinished, downloads, onStatus, now = Date.now) {
+export function createLiveCapture(requestFinished, writeFile, onStatus, now = Date.now) {
   let researchId;
   let active = false;
   let queue = Promise.resolve();
@@ -41,7 +41,7 @@ export function createLiveCapture(requestFinished, downloads, onStatus, now = Da
           throw new Error("Payload unavailable");
         }
         exchange.response = await retryUnavailableMedia(retry, exchange.response);
-        const result = await exportPayloads(downloads, id, [exchange], date);
+        const result = await exportPayloads(writeFile, id, [exchange], date);
         saved += result.saved;
         if (result.errors.length) {
           recordErrors(result.errors);

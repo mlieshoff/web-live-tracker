@@ -1,5 +1,5 @@
 import { createLiveCapture } from "./live-capture.mjs";
-import { extensionApi, isFirefox } from "./browser-api.mjs";
+import { extensionApi, isFirefox, saveExtensionFile } from "./browser-api.mjs";
 
 const form = document.querySelector("#capture-form");
 const researchId = document.querySelector("#research-id");
@@ -48,7 +48,7 @@ function showSaveErrors(failed, errorCount, errors) {
   }));
 }
 
-const capture = createLiveCapture(extensionApi.devtools.network.onRequestFinished, extensionApi.downloads, ({
+const capture = createLiveCapture(extensionApi.devtools.network.onRequestFinished, saveExtensionFile, ({
   active, captured, pending, saved, failed, errorCount, errors,
 }) => {
   const busy = active || pending > 0;

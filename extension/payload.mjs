@@ -1,4 +1,4 @@
-import { DownloadError, downloadFile, exportFolder, jsonFile } from "./export.mjs";
+import { DownloadError, exportFolder, jsonFile } from "./export.mjs";
 import { readResponseContent } from "./browser-api.mjs";
 
 const fileExtensions = new Map([
@@ -179,13 +179,13 @@ async function saveBody(saveFile, base, name, body, mediaType) {
   return saveFile(`${base}/${filename}`, new Blob([body.data], { type }));
 }
 
-export async function exportPayloads(downloads, researchId, exchanges, date) {
+export async function exportPayloads(writeFile, researchId, exchanges, date) {
   const folder = exportFolder(researchId, date);
   const batch = crypto.randomUUID().slice(0, 18);
   const result = { saved: 0, errors: [] };
   async function saveFile(filename, data) {
     try {
-      const savedName = await downloadFile(downloads, filename, data);
+      const savedName = await writeFile(filename, data);
       result.saved += 1;
       return savedName;
     } catch (error) {

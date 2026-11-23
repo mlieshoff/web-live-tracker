@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { createLiveCapture } from "../extension/live-capture.mjs";
+import { downloadFile } from "../extension/export.mjs";
 
 function networkEvent() {
   const listeners = new Set();
@@ -27,7 +28,7 @@ function entry(path, date) {
 
 test("start rejects an invalid research ID before subscribing to traffic", () => {
   const event = networkEvent();
-  const capture = createLiveCapture(event, {}, () => {});
+  const capture = createLiveCapture(event, () => {}, () => {});
 
   assert.throws(() => capture.start("../outside"), /Use 1–64/);
   assert.equal(event.listeners.size, 0);
@@ -54,7 +55,7 @@ test("live capture saves while active and drains under the original ID after sto
   const beforeMidnight = new Date(2025, 11, 31, 23, 59);
   const afterMidnight = new Date(2026, 0, 1, 0, 1);
   let lastStatus;
-  const capture = createLiveCapture(event, downloads, (status) => {
+  const capture = createLiveCapture(event, downloadFile.bind(null, downloads), (status) => {
     lastStatus = status;
     if (status.active && status.saved === 2) {
       firstSaved.resolve();
@@ -100,7 +101,7 @@ test("live capture reports a failed exchange and saves subsequent files", async 
       return [{ state: "complete" }];
     },
   };
-  const capture = createLiveCapture(event, downloads, (status) => {
+  const capture = createLiveCapture(event, downloadFile.bind(null, downloads), (status) => {
     lastStatus = status;
   }, () => date.getTime() - 1);
 
@@ -132,7 +133,7 @@ test("live capture keeps the latest error details and clears them for a new capt
       throw new Error("Invalid filename");
     },
   };
-  const capture = createLiveCapture(event, downloads, (status) => {
+  const capture = createLiveCapture(event, downloadFile.bind(null, downloads), (status) => {
     lastStatus = status;
   }, () => date.getTime() - 1);
 

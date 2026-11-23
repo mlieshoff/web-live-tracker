@@ -25,7 +25,7 @@ trap 'exit 1' HUP INT TERM
 
 if [ "$browser" = firefox ]; then
   shared_files=$(git -C "$project_root" ls-tree HEAD:extension)
-  firefox_files=$(git -C "$project_root" ls-tree HEAD:firefox manifest.json README.md)
+  firefox_files=$(git -C "$project_root" ls-tree HEAD:firefox manifest.json README.md background.mjs)
   tree=$(
     {
       printf '%s\n' "$shared_files" | awk -F '\t' '$2 != "manifest.json"'
