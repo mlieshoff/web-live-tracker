@@ -1,4 +1,5 @@
 import { DownloadError, downloadFile, exportFolder, jsonFile } from "./export.mjs";
+import { readResponseContent } from "./browser-api.mjs";
 
 const fileExtensions = new Map([
   ["application/gzip", "gz"],
@@ -106,25 +107,25 @@ async function responseBody(entry) {
   const unavailable = (reason) => ({ ...bodyStatus("unavailable"), reason });
   try {
     return await new Promise((resolve) => {
-      timer = setTimeout(() => resolve(unavailable("Chrome DevTools did not provide the response body in time.")), 5000);
-      entry.getContent((content, encoding) => {
+      timer = setTimeout(() => resolve(unavailable("DevTools did not provide the response body in time.")), 5000);
+      readResponseContent(entry, (content, encoding) => {
         if (typeof content !== "string" || (content.length === 0 && entry.response.content?.size > 0)) {
-          resolve(unavailable("Chrome DevTools did not retain the response body."));
+          resolve(unavailable("DevTools did not retain the response body."));
         } else if (!encoding) {
           resolve(bodyStatus("saved", content));
         } else if (encoding === "base64") {
           try {
             resolve(bodyStatus("saved", Uint8Array.from(atob(content), (byte) => byte.charCodeAt(0))));
           } catch {
-            resolve(unavailable("Chrome DevTools returned an invalid base64 response body."));
+            resolve(unavailable("DevTools returned an invalid base64 response body."));
           }
         } else {
-          resolve(unavailable("Chrome DevTools returned an unsupported response encoding."));
+          resolve(unavailable("DevTools returned an unsupported response encoding."));
         }
       });
     });
   } catch {
-    return unavailable("Chrome DevTools could not read the response body.");
+    return unavailable("DevTools could not read the response body.");
   } finally {
     clearTimeout(timer);
   }

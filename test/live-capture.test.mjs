@@ -117,8 +117,8 @@ test("live capture reports a failed exchange and saves subsequent files", async 
     failed: 1,
     errorCount: 2,
     errors: [
-      { target: failedPaths[0], reason: "Chrome rejected the download filename." },
-      { target: failedPaths[1], reason: "The download failed to start. Check Chrome Downloads." },
+      { target: failedPaths[0], reason: "The browser rejected the download filename." },
+      { target: failedPaths[1], reason: "The download failed to start. Check your browser’s downloads." },
     ],
   });
 });

@@ -48,7 +48,7 @@ test("capturePayload marks an empty DevTools result as unavailable when response
   assert.deepEqual(exchange.response, {
     status: "unavailable",
     data: undefined,
-    reason: "Chrome DevTools did not retain the response body.",
+    reason: "DevTools did not retain the response body.",
   });
 });
 
@@ -133,7 +133,7 @@ test("exportPayloads reports a blocked file and still saves later payloads and m
   }, {
     result: {
       saved: 5,
-      errors: [{ target: files.get(1), reason: "Chrome could not write to the download destination." }],
+      errors: [{ target: files.get(1), reason: "The browser could not write to the download destination." }],
     },
     attempted: 6,
     requestStatus: "download-failed",

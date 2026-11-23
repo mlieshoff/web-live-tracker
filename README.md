@@ -1,6 +1,8 @@
 # Web Live Tracker
 
-Web Live Tracker is a Chrome extension that saves the network requests and responses Chrome makes available for the tab you’re inspecting. Enter a research ID, start capture, and browse as usual. Completed exchanges are saved to disk as you go.
+Web Live Tracker saves the network requests and responses your browser makes available for the tab you’re inspecting. Enter a research ID, start capture, and browse as usual. Completed exchanges are saved to disk as you go.
+
+Desktop Firefox has a separate package and a short setup guide. [Firefox installation and capture guide](firefox/README.md)
 
 For a German walkthrough with a real website example, see the [German installation and usage guide](README_DE.md).
 
@@ -66,4 +68,4 @@ To create an installable ZIP, run this from the project root in a shell with Git
 sh scripts/package-extension.sh
 ```
 
-The command writes `web-live-tracker.zip` to the project root. It packages the committed extension and both guides from the current commit. You can share the ZIP directly.
+The command writes `web-live-tracker.zip` to the project root. It packages the committed Chrome extension and both guides from the current commit. To build the Firefox package from the same shared files, run `sh scripts/package-extension.sh firefox`. The output is `firefox/web-live-tracker-firefox.zip`.

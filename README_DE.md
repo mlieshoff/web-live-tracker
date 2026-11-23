@@ -2,6 +2,8 @@
 
 Web Live Tracker speichert beim Surfen Dateien auf deinem Computer. Du startest die Aufzeichnung selbst und siehst anschließend, welche Inhalte Chrome für die geöffnete Webseite geladen hat. In dieser Anleitung probierst du das mit einem Einmaleins-Spiel aus. Du brauchst Google Chrome und musst keine Befehle eingeben.
 
+Für Firefox gibt es ein eigenes ZIP-Paket und eine eigene Anleitung. [Firefox-Anleitung auf Englisch](firefox/README.md)
+
 ## 1. Erweiterung herunterladen und installieren
 
 1. Wenn du `web-live-tracker.zip` bekommen hast, speichere die Datei auf deinem Computer. Wenn du das Projekt auf GitHub geöffnet hast, klicke oben auf **Code** und dann auf **Download ZIP**.

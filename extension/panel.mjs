@@ -1,4 +1,5 @@
 import { createLiveCapture } from "./live-capture.mjs";
+import { extensionApi, isFirefox } from "./browser-api.mjs";
 
 const form = document.querySelector("#capture-form");
 const researchId = document.querySelector("#research-id");
@@ -14,6 +15,7 @@ const capturedCount = document.querySelector("#captured-count");
 const savedCount = document.querySelector("#saved-count");
 const pendingCount = document.querySelector("#pending-count");
 let displayedErrors;
+document.querySelector("#network-monitor-tip").hidden = !isFirefox;
 
 function showText(element, value) {
   if (element.textContent !== value) {
@@ -46,7 +48,7 @@ function showSaveErrors(failed, errorCount, errors) {
   }));
 }
 
-const capture = createLiveCapture(chrome.devtools.network.onRequestFinished, chrome.downloads, ({
+const capture = createLiveCapture(extensionApi.devtools.network.onRequestFinished, extensionApi.downloads, ({
   active, captured, pending, saved, failed, errorCount, errors,
 }) => {
   const busy = active || pending > 0;
