@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { prepareMediaRetry, retryUnavailableMedia } from "../extension/media-retry.mjs";
+import { prepareMediaRetry, retryUnavailableMedia } from "../shared/media-retry.mjs";
 
 const url = "https://media.example.com/video.mp4";
 const metadata = { method: "GET", status: 200, mediaType: "Video/MP4; codecs=avc1" };

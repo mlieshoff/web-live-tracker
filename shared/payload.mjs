@@ -1,4 +1,4 @@
-import { DownloadError, downloadFile, exportFolder, jsonFile } from "./export.mjs";
+import { DownloadError, exportFolder, jsonFile } from "./export.mjs";
 
 const fileExtensions = new Map([
   ["application/gzip", "gz"],
@@ -97,7 +97,7 @@ function requestBody(request) {
   return bodyStatus(request.bodySize === 0 ? "absent" : "unavailable");
 }
 
-async function responseBody(entry) {
+async function responseBody(entry, readResponseContent) {
   if (entry.request.method === "HEAD" || [204, 205, 304].includes(entry.response.status)) {
     return bodyStatus("absent");
   }
@@ -106,35 +106,35 @@ async function responseBody(entry) {
   const unavailable = (reason) => ({ ...bodyStatus("unavailable"), reason });
   try {
     return await new Promise((resolve) => {
-      timer = setTimeout(() => resolve(unavailable("Chrome DevTools did not provide the response body in time.")), 5000);
-      entry.getContent((content, encoding) => {
+      timer = setTimeout(() => resolve(unavailable("DevTools did not provide the response body in time.")), 5000);
+      readResponseContent(entry, (content, encoding) => {
         if (typeof content !== "string" || (content.length === 0 && entry.response.content?.size > 0)) {
-          resolve(unavailable("Chrome DevTools did not retain the response body."));
+          resolve(unavailable("DevTools did not retain the response body."));
         } else if (!encoding) {
           resolve(bodyStatus("saved", content));
         } else if (encoding === "base64") {
           try {
             resolve(bodyStatus("saved", Uint8Array.from(atob(content), (byte) => byte.charCodeAt(0))));
           } catch {
-            resolve(unavailable("Chrome DevTools returned an invalid base64 response body."));
+            resolve(unavailable("DevTools returned an invalid base64 response body."));
           }
         } else {
-          resolve(unavailable("Chrome DevTools returned an unsupported response encoding."));
+          resolve(unavailable("DevTools returned an unsupported response encoding."));
         }
       });
     });
   } catch {
-    return unavailable("Chrome DevTools could not read the response body.");
+    return unavailable("DevTools could not read the response body.");
   } finally {
     clearTimeout(timer);
   }
 }
 
-export async function capturePayload(entry, metadata) {
+export async function capturePayload(entry, metadata, readResponseContent) {
   const request = requestBody(entry.request);
   const requestMediaType = entry.request.postData?.mimeType ||
     entry.request.headers?.find(({ name }) => name.toLowerCase() === "content-type")?.value;
-  const response = await responseBody(entry);
+  const response = await responseBody(entry, readResponseContent);
   return { metadata, request, response, requestMediaType };
 }
 
@@ -178,13 +178,13 @@ async function saveBody(saveFile, base, name, body, mediaType) {
   return saveFile(`${base}/${filename}`, new Blob([body.data], { type }));
 }
 
-export async function exportPayloads(downloads, researchId, exchanges, date) {
+export async function exportPayloads(writeFile, researchId, exchanges, date) {
   const folder = exportFolder(researchId, date);
   const batch = crypto.randomUUID().slice(0, 18);
   const result = { saved: 0, errors: [] };
   async function saveFile(filename, data) {
     try {
-      const savedName = await downloadFile(downloads, filename, data);
+      const savedName = await writeFile(filename, data);
       result.saved += 1;
       return savedName;
     } catch (error) {

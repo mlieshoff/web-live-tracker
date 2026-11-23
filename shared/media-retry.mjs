@@ -80,6 +80,6 @@ export async function retryUnavailableMedia(candidate, body, fetchMedia = fetch)
 
     return { status: "saved", data: new Blob(chunks), source: "refetched" };
   } catch {
-    return failed("The anonymous media request could not finish. Chrome may have blocked cross-origin access or a redirect.");
+    return failed("The anonymous media request could not finish. The browser may have blocked cross-origin access or a redirect.");
   }
 }

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { downloadFile, exportFolder, jsonFile, validateResearchId } from "../extension/export.mjs";
+import { downloadFile, exportFolder, jsonFile, validateResearchId } from "../shared/export.mjs";
 
 test("exportFolder puts a valid research ID inside the export folder", () => {
   assert.equal(exportFolder("Research_2026-1", new Date(2026, 0, 3)), "web-live-tracker/Research_2026-1/2026-01-03");

@@ -1,0 +1,17 @@
+{
+  "manifest_version": 3,
+  "name": "Web Live Tracker",
+  "version": "0.1.0",
+  "description": "Capture requests and responses from the Firefox tab you inspect.",
+  "permissions": ["downloads"],
+  "background": {
+    "scripts": ["browser/background.mjs"],
+    "type": "module"
+  },
+  "devtools_page": "shared/devtools.html",
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "web-live-tracker@local"
+    }
+  }
+}

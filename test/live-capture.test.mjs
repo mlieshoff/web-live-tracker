@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { createLiveCapture } from "../extension/live-capture.mjs";
+import { createLiveCapture } from "../shared/live-capture.mjs";
+import { downloadFile } from "../shared/export.mjs";
+import { readResponseContent } from "../chrome/browser-api.mjs";
 
 function networkEvent() {
   const listeners = new Set();
@@ -27,7 +29,7 @@ function entry(path, date) {
 
 test("start rejects an invalid research ID before subscribing to traffic", () => {
   const event = networkEvent();
-  const capture = createLiveCapture(event, {}, () => {});
+  const capture = createLiveCapture({ requestFinished: event, onStatus() {} });
 
   assert.throws(() => capture.start("../outside"), /Use 1–64/);
   assert.equal(event.listeners.size, 0);
@@ -54,12 +56,18 @@ test("live capture saves while active and drains under the original ID after sto
   const beforeMidnight = new Date(2025, 11, 31, 23, 59);
   const afterMidnight = new Date(2026, 0, 1, 0, 1);
   let lastStatus;
-  const capture = createLiveCapture(event, downloads, (status) => {
-    lastStatus = status;
-    if (status.active && status.saved === 2) {
-      firstSaved.resolve();
-    }
-  }, () => beforeMidnight.getTime() - 1);
+  const capture = createLiveCapture({
+    requestFinished: event,
+    writeFile: downloadFile.bind(null, downloads),
+    readResponseContent,
+    onStatus(status) {
+      lastStatus = status;
+      if (status.active && status.saved === 2) {
+        firstSaved.resolve();
+      }
+    },
+    now: () => beforeMidnight.getTime() - 1,
+  });
 
   capture.start("study");
   event.emit(entry("first", beforeMidnight));
@@ -100,9 +108,13 @@ test("live capture reports a failed exchange and saves subsequent files", async 
       return [{ state: "complete" }];
     },
   };
-  const capture = createLiveCapture(event, downloads, (status) => {
-    lastStatus = status;
-  }, () => date.getTime() - 1);
+  const capture = createLiveCapture({
+    requestFinished: event,
+    writeFile: downloadFile.bind(null, downloads),
+    readResponseContent,
+    onStatus: (status) => { lastStatus = status; },
+    now: () => date.getTime() - 1,
+  });
 
   capture.start("study");
   event.emit(entry("blocked", date));
@@ -117,8 +129,8 @@ test("live capture reports a failed exchange and saves subsequent files", async 
     failed: 1,
     errorCount: 2,
     errors: [
-      { target: failedPaths[0], reason: "Chrome rejected the download filename." },
-      { target: failedPaths[1], reason: "The download failed to start. Check Chrome Downloads." },
+      { target: failedPaths[0], reason: "The browser rejected the download filename." },
+      { target: failedPaths[1], reason: "The download failed to start. Check your browser’s downloads." },
     ],
   });
 });
@@ -132,9 +144,13 @@ test("live capture keeps the latest error details and clears them for a new capt
       throw new Error("Invalid filename");
     },
   };
-  const capture = createLiveCapture(event, downloads, (status) => {
-    lastStatus = status;
-  }, () => date.getTime() - 1);
+  const capture = createLiveCapture({
+    requestFinished: event,
+    writeFile: downloadFile.bind(null, downloads),
+    readResponseContent,
+    onStatus: (status) => { lastStatus = status; },
+    now: () => date.getTime() - 1,
+  });
 
   capture.start("study");
   for (let index = 0; index < 16; index += 1) {

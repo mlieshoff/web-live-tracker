@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { capturePayload, exportPayloads } from "../extension/payload.mjs";
+import { capturePayload, exportPayloads } from "../shared/payload.mjs";
+import { downloadFile } from "../shared/export.mjs";
+import { readResponseContent } from "../chrome/browser-api.mjs";
 
 const metadata = {
   timestamp: "2026-01-03T10:00:00.000Z",
@@ -15,7 +17,7 @@ test("capturePayload preserves request text and decodes DevTools binary represen
     request: { method: "POST", postData: { text: "  sample\n" } },
     response: { status: 200 },
     getContent: (callback) => callback("AAH/gA==", "base64"),
-  }, metadata);
+  }, metadata, readResponseContent);
 
   assert.deepEqual(exchange, {
     metadata,
@@ -33,7 +35,7 @@ test("capturePayload marks an unsupported compressed upload and a missing respon
       postData: { text: "unreliable character representation" },
     },
     response: { status: 204 },
-  }, metadata);
+  }, metadata, readResponseContent);
 
   assert.deepEqual([exchange.request.status, exchange.response.status], ["unavailable", "absent"]);
 });
@@ -43,12 +45,12 @@ test("capturePayload marks an empty DevTools result as unavailable when response
     request: { method: "GET", bodySize: 0 },
     response: { status: 200, content: { mimeType: "video/mp4", size: 24 * 1024 * 1024 } },
     getContent: (callback) => callback("", ""),
-  }, metadata);
+  }, metadata, readResponseContent);
 
   assert.deepEqual(exchange.response, {
     status: "unavailable",
     data: undefined,
-    reason: "Chrome DevTools did not retain the response body.",
+    reason: "DevTools did not retain the response body.",
   });
 });
 
@@ -70,7 +72,7 @@ test("exportPayloads separates repeated exchanges and escapes unsafe path names"
     response: { status: "unavailable" },
   };
 
-  await exportPayloads(downloads, "study", [exchange, exchange], new Date(2026, 0, 3));
+  await exportPayloads(downloadFile.bind(null, downloads), "study", [exchange, exchange], new Date(2026, 0, 3));
 
   const result = [...files].map(([filename, text]) => {
     const parts = filename.split("/");
@@ -122,7 +124,7 @@ test("exportPayloads reports a blocked file and still saves later payloads and m
     response: { status: "saved", data: "response" },
   };
 
-  const result = await exportPayloads(downloads, "study", [exchange, exchange], new Date(2026, 0, 3));
+  const result = await exportPayloads(downloadFile.bind(null, downloads), "study", [exchange, exchange], new Date(2026, 0, 3));
 
   assert.deepEqual({
     result,
@@ -133,7 +135,7 @@ test("exportPayloads reports a blocked file and still saves later payloads and m
   }, {
     result: {
       saved: 5,
-      errors: [{ target: files.get(1), reason: "Chrome could not write to the download destination." }],
+      errors: [{ target: files.get(1), reason: "The browser could not write to the download destination." }],
     },
     attempted: 6,
     requestStatus: "download-failed",
@@ -160,7 +162,7 @@ test("exportPayloads escapes Chromium-reserved names in both the domain and path
     response: { status: "saved", data: Uint8Array.of(1, 2, 3) },
   };
 
-  await exportPayloads(downloads, "study", [exchange], new Date(2026, 0, 3));
+  await exportPayloads(downloadFile.bind(null, downloads), "study", [exchange], new Date(2026, 0, 3));
 
   const prefix = "web-live-tracker/study/2026-01-03/example!2e!local/assets/" +
     "!reserved!desktop.ini/!reserved!THUMBS.DB/a!2e!LNK/b!2e!scf/c!2e!url/photo.png";
@@ -190,7 +192,7 @@ test("exportPayloads gives root, empty, and shortened URL paths portable folder 
     response: { status: "unavailable" },
   }));
 
-  await exportPayloads(downloads, "study", exchanges, new Date(2026, 0, 3));
+  await exportPayloads(downloadFile.bind(null, downloads), "study", exchanges, new Date(2026, 0, 3));
 
   assert.deepEqual(files.map(({ filename, originalUrl }) => [
     filename.split("/").slice(4, -2).join("/"),
@@ -229,9 +231,9 @@ test("exportPayloads names request and response files independently and records 
     },
     response: { status: 200 },
     getContent: (callback) => callback("AAH/gA==", "base64"),
-  }, { ...metadata, mediaType: "Image/PNG" });
+  }, { ...metadata, mediaType: "Image/PNG" }, readResponseContent);
 
-  await exportPayloads(downloads, "study", [exchange], new Date(2026, 0, 3));
+  await exportPayloads(downloadFile.bind(null, downloads), "study", [exchange], new Date(2026, 0, 3));
 
   const index = JSON.parse(new TextDecoder().decode(Uint8Array.from(files[2].bytes)));
   assert.deepEqual({
@@ -265,7 +267,7 @@ test("exportPayloads uses neutral text and binary types for active or unknown me
     response: { status: "saved", data: Uint8Array.of(0, 1, 255) },
   };
 
-  await exportPayloads(downloads, "study", [exchange], new Date(2026, 0, 3));
+  await exportPayloads(downloadFile.bind(null, downloads), "study", [exchange], new Date(2026, 0, 3));
 
   assert.deepEqual(types, [
     ["request.txt", "text/plain;charset=utf-8"],
@@ -312,7 +314,7 @@ test("exportPayloads detects recognizable binary content only when a declared ty
     response: { status: "saved", data: Uint8Array.from(bytes) },
   }));
 
-  await exportPayloads(downloads, "study", exchanges, new Date(2026, 0, 3));
+  await exportPayloads(downloadFile.bind(null, downloads), "study", exchanges, new Date(2026, 0, 3));
 
   const bodies = files.filter(({ name }) => name !== "exchange.json");
   const indexedNames = files.filter(({ name }) => name === "exchange.json")

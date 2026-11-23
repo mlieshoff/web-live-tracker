@@ -1,4 +1,5 @@
 import { createLiveCapture } from "./live-capture.mjs";
+import { networkMonitorTip, readResponseContent, requestFinished, saveExtensionFile } from "../browser/browser-api.mjs";
 
 const form = document.querySelector("#capture-form");
 const researchId = document.querySelector("#research-id");
@@ -14,6 +15,9 @@ const capturedCount = document.querySelector("#captured-count");
 const savedCount = document.querySelector("#saved-count");
 const pendingCount = document.querySelector("#pending-count");
 let displayedErrors;
+const networkTip = document.querySelector("#network-monitor-tip");
+networkTip.textContent = networkMonitorTip;
+networkTip.hidden = !networkMonitorTip;
 
 function showText(element, value) {
   if (element.textContent !== value) {
@@ -46,9 +50,9 @@ function showSaveErrors(failed, errorCount, errors) {
   }));
 }
 
-const capture = createLiveCapture(chrome.devtools.network.onRequestFinished, chrome.downloads, ({
+function onStatus({
   active, captured, pending, saved, failed, errorCount, errors,
-}) => {
+}) {
   const busy = active || pending > 0;
   researchId.disabled = busy;
   start.disabled = busy;
@@ -64,7 +68,9 @@ const capture = createLiveCapture(chrome.devtools.network.onRequestFinished, chr
   if (!busy && document.activeElement === status) {
     researchId.focus();
   }
-});
+}
+
+const capture = createLiveCapture({ requestFinished, writeFile: saveExtensionFile, readResponseContent, onStatus });
 
 form.addEventListener("submit", (event) => {
   event.preventDefault();
