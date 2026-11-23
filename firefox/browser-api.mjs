@@ -4,7 +4,8 @@ export const requestFinished = globalThis.browser?.devtools?.network?.onRequestF
 export const networkMonitorTip = "In Firefox, open the Network tab once, then return here to start capture.";
 
 export function createPanel() {
-  globalThis.browser.devtools.panels.create("Web Live Tracker", "", "shared/panel.html");
+  // Firefox resolves the panel path relative to the DevTools page.
+  globalThis.browser.devtools.panels.create("Web Live Tracker", "", "panel.html");
 }
 
 export function readResponseContent(entry, callback) {
