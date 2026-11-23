@@ -1,11 +1,12 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { readResponseContent } from "../extension/browser-api.mjs";
+import { readResponseContent as readChromeResponse } from "../chrome/browser-api.mjs";
+import { readResponseContent as readFirefoxResponse } from "../firefox/browser-api.mjs";
 
 test("readResponseContent uses Chrome's callback body and encoding", async () => {
   const entry = { getContent: (callback) => callback("AAH/", "base64") };
   const result = await new Promise((resolve) => {
-    readResponseContent(entry, (...args) => resolve(args), false);
+    readChromeResponse(entry, (...args) => resolve(args));
   });
 
   assert.deepEqual(result, ["AAH/", "base64"]);
@@ -21,7 +22,7 @@ test("readResponseContent uses Firefox HAR encoding instead of the returned MIME
     getContent: async () => ["{}", "application/json"],
   };
   const read = (entry) => new Promise((resolve) => {
-    readResponseContent(entry, (...args) => resolve(args), true);
+    readFirefoxResponse(entry, (...args) => resolve(args));
   });
 
   assert.deepEqual(await Promise.all([read(binary), read(text)]), [
@@ -36,7 +37,7 @@ test("readResponseContent reports a rejected Firefox body request as unavailable
       throw new Error("Content unavailable");
     },
   };
-  const result = await new Promise((resolve) => readResponseContent(entry, resolve, true));
+  const result = await new Promise((resolve) => readFirefoxResponse(entry, resolve));
 
   assert.equal(result, undefined);
 });

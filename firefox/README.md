@@ -2,6 +2,8 @@
 
 This package shares the capture panel, payload handling, and file layout with the Chrome extension. Firefox DevTools determines which response bodies it can provide.
 
+[German installation and usage guide](README_DE.md)
+
 ## Install in desktop Firefox
 
 1. Save `web-live-tracker-firefox.zip` to your computer.
@@ -19,3 +21,7 @@ The temporary add-on stays loaded until Firefox restarts or you remove it. [Mozi
 5. Open Firefox’s downloads list or configured download folder. The files are under `web-live-tracker/<research-id>/<local-date>/<host>/<URL-path>/<exchange-id>/`.
 
 Requests and responses that Firefox provides are saved automatically with their file types when known. `exchange.json` identifies the body files and records partial or unavailable responses. The media retry follows the same anonymous request rules as the Chrome version.
+
+## Build the ZIP
+
+Run `sh scripts/package-extension.sh firefox` from the repository root. The command writes `firefox/web-live-tracker-firefox.zip` from the committed sources and guides.

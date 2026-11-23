@@ -1,9 +1,9 @@
-import { DownloadError, downloadFile } from "./export.mjs";
+import { DownloadError, downloadFile } from "../shared/export.mjs";
 
 browser.runtime.onMessage.addListener((message, sender) => {
   if (message?.action !== "saveCaptureFile" ||
       sender.id !== browser.runtime.id ||
-      sender.url !== browser.runtime.getURL("panel.html")) {
+      sender.url !== browser.runtime.getURL("shared/panel.html")) {
     return undefined;
   }
 

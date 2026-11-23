@@ -1,5 +1,4 @@
 import { DownloadError, exportFolder, jsonFile } from "./export.mjs";
-import { readResponseContent } from "./browser-api.mjs";
 
 const fileExtensions = new Map([
   ["application/gzip", "gz"],
@@ -98,7 +97,7 @@ function requestBody(request) {
   return bodyStatus(request.bodySize === 0 ? "absent" : "unavailable");
 }
 
-async function responseBody(entry) {
+async function responseBody(entry, readResponseContent) {
   if (entry.request.method === "HEAD" || [204, 205, 304].includes(entry.response.status)) {
     return bodyStatus("absent");
   }
@@ -131,11 +130,11 @@ async function responseBody(entry) {
   }
 }
 
-export async function capturePayload(entry, metadata) {
+export async function capturePayload(entry, metadata, readResponseContent) {
   const request = requestBody(entry.request);
   const requestMediaType = entry.request.postData?.mimeType ||
     entry.request.headers?.find(({ name }) => name.toLowerCase() === "content-type")?.value;
-  const response = await responseBody(entry);
+  const response = await responseBody(entry, readResponseContent);
   return { metadata, request, response, requestMediaType };
 }
 

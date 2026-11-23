@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { capturePayload, exportPayloads } from "../extension/payload.mjs";
-import { downloadFile } from "../extension/export.mjs";
+import { capturePayload, exportPayloads } from "../shared/payload.mjs";
+import { downloadFile } from "../shared/export.mjs";
+import { readResponseContent } from "../chrome/browser-api.mjs";
 
 const metadata = {
   timestamp: "2026-01-03T10:00:00.000Z",
@@ -16,7 +17,7 @@ test("capturePayload preserves request text and decodes DevTools binary represen
     request: { method: "POST", postData: { text: "  sample\n" } },
     response: { status: 200 },
     getContent: (callback) => callback("AAH/gA==", "base64"),
-  }, metadata);
+  }, metadata, readResponseContent);
 
   assert.deepEqual(exchange, {
     metadata,
@@ -34,7 +35,7 @@ test("capturePayload marks an unsupported compressed upload and a missing respon
       postData: { text: "unreliable character representation" },
     },
     response: { status: 204 },
-  }, metadata);
+  }, metadata, readResponseContent);
 
   assert.deepEqual([exchange.request.status, exchange.response.status], ["unavailable", "absent"]);
 });
@@ -44,7 +45,7 @@ test("capturePayload marks an empty DevTools result as unavailable when response
     request: { method: "GET", bodySize: 0 },
     response: { status: 200, content: { mimeType: "video/mp4", size: 24 * 1024 * 1024 } },
     getContent: (callback) => callback("", ""),
-  }, metadata);
+  }, metadata, readResponseContent);
 
   assert.deepEqual(exchange.response, {
     status: "unavailable",
@@ -230,7 +231,7 @@ test("exportPayloads names request and response files independently and records 
     },
     response: { status: 200 },
     getContent: (callback) => callback("AAH/gA==", "base64"),
-  }, { ...metadata, mediaType: "Image/PNG" });
+  }, { ...metadata, mediaType: "Image/PNG" }, readResponseContent);
 
   await exportPayloads(downloadFile.bind(null, downloads), "study", [exchange], new Date(2026, 0, 3));
 

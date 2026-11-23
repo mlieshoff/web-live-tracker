@@ -1,5 +1,5 @@
 import { createLiveCapture } from "./live-capture.mjs";
-import { extensionApi, isFirefox, saveExtensionFile } from "./browser-api.mjs";
+import { networkMonitorTip, readResponseContent, requestFinished, saveExtensionFile } from "../browser/browser-api.mjs";
 
 const form = document.querySelector("#capture-form");
 const researchId = document.querySelector("#research-id");
@@ -15,7 +15,9 @@ const capturedCount = document.querySelector("#captured-count");
 const savedCount = document.querySelector("#saved-count");
 const pendingCount = document.querySelector("#pending-count");
 let displayedErrors;
-document.querySelector("#network-monitor-tip").hidden = !isFirefox;
+const networkTip = document.querySelector("#network-monitor-tip");
+networkTip.textContent = networkMonitorTip;
+networkTip.hidden = !networkMonitorTip;
 
 function showText(element, value) {
   if (element.textContent !== value) {
@@ -48,9 +50,9 @@ function showSaveErrors(failed, errorCount, errors) {
   }));
 }
 
-const capture = createLiveCapture(extensionApi.devtools.network.onRequestFinished, saveExtensionFile, ({
+function onStatus({
   active, captured, pending, saved, failed, errorCount, errors,
-}) => {
+}) {
   const busy = active || pending > 0;
   researchId.disabled = busy;
   start.disabled = busy;
@@ -66,7 +68,9 @@ const capture = createLiveCapture(extensionApi.devtools.network.onRequestFinishe
   if (!busy && document.activeElement === status) {
     researchId.focus();
   }
-});
+}
+
+const capture = createLiveCapture({ requestFinished, writeFile: saveExtensionFile, readResponseContent, onStatus });
 
 form.addEventListener("submit", (event) => {
   event.preventDefault();

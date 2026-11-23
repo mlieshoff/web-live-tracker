@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { createCapture } from "../extension/capture.mjs";
+import { createCapture } from "../shared/capture.mjs";
 
 const startTime = Date.parse("2025-01-01T12:00:00.000Z");
 const entry = {
