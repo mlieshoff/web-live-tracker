@@ -20,11 +20,15 @@ Web Live Tracker speichert beim Surfen Dateien auf deinem Computer. Du startest 
 5. Tippe `einmaleins-test` in **Research ID** ein. Das ist der Name, unter dem du die Dateien später wiederfindest.
 6. Klicke im Tracker auf **Start capture**. Sobald **Capturing.** erscheint, lade die Webseite mit dem runden Pfeil neben der Adressleiste neu. So zeichnet der Tracker auch auf, was Chrome beim Laden der Seite abruft.
 7. Wähle auf der Webseite zum Beispiel die **7** und klicke dort auf **Start**. Löse ein paar Aufgaben. Mit **Answer** bestätigst du deine Eingabe. Im Tracker zeigt **Files saved**, wie viele Dateien Chrome bereits gespeichert hat.
-8. Klicke im Tracker auf **Stop capture**. Warte, bis **Pending exchanges 0** angezeigt wird. Jetzt kannst du die Entwicklerwerkzeuge schließen.
+8. Klicke im Tracker auf **Stop capture**. Warte, bis der Bericht fertig ist, und wähle **Open capture report**.
 
 Falls Chrome beim Speichern nach einem Ablageort fragt, findest du die Einstellung dafür unter `chrome://settings/downloads`. Wenn du die Nachfrage ausschaltest, verwendet Chrome den dort eingestellten Download-Ordner automatisch.
 
 ## 3. Gespeicherte Dateien finden und öffnen
+
+Der Bericht gruppiert gespeicherte Dateien nach Typ und verlinkt sie direkt. Unter **What needs attention** steht, warum Dateien fehlen oder unvollständig sind. Du findest den Bericht auch unter `web-live-tracker/<research-id>/capture-*.html`. Lass ihn in diesem Ordner, damit die Links funktionieren.
+
+Um eine frühere Aufzeichnung zu öffnen, gib ihre **Research ID** ein und wähle **Open capture report**, bevor du eine neue Aufzeichnung startest. Der Bericht verlinkt frühere Dateien automatisch, wenn sie im Download-Verlauf dieses Browsers unter `Downloads/web-live-tracker/<research-id>/` zu finden sind. Die Rohdaten enthalten die Details früherer Aufzeichnungen. Wenn der Download-Verlauf gelöscht wurde, findest du die Dateien weiterhin in diesem Ordner.
 
 1. Öffne in einem neuen Chrome-Tab `chrome://downloads`.
 2. Klicke bei einer Datei aus dieser Aufzeichnung auf das Ordnersymbol. So springst du direkt zum Speicherort. Du kannst auch deinen üblichen Downloads-Ordner öffnen und dort nach `web-live-tracker` suchen.

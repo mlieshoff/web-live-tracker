@@ -18,9 +18,13 @@ Nach einem Firefox-Neustart wiederholst du diese Schritte, um die Erweiterung er
 2. Klicke mit der rechten Maustaste auf die Webseite und wähle **Untersuchen**. Öffne oben in den Entwicklerwerkzeugen einmal **Netzwerk** (englisch **Network**). Setze am besten das Häkchen bei **Cache deaktivieren**, damit Firefox beim Neuladen mehr Inhalte frisch abruft.
 3. Wechsle zu **Web Live Tracker**. Falls du den Tab nicht siehst, schau im Menü **»** nach. Gib unter **Research ID** `einmaleins-test` ein und klicke auf **Start capture**.
 4. Lade die Seite neu. Wähle zum Beispiel die **7**, klicke auf **Start** und löse ein paar Aufgaben. Die Zahl bei **Files saved** zeigt dir, wie viele Dateien Firefox gespeichert hat.
-5. Klicke auf **Stop capture**. Warte, bis **Pending exchanges** auf **0** steht, bevor du die Entwicklerwerkzeuge schließt.
+5. Klicke auf **Stop capture**. Warte, bis der Bericht fertig ist, und wähle **Open capture report**. Klicke im neuen Tab auf **Open downloaded report**. Falls sich der Bericht nicht öffnet, wähle **Show report in folder**.
 
 ## Dateien finden
+
+Der Bericht gruppiert gespeicherte Dateien nach Typ und verlinkt sie direkt. Unter **What needs attention** steht, warum Dateien fehlen oder unvollständig sind. Du findest den Bericht auch unter `web-live-tracker/<research-id>/capture-*.html`. Lass ihn in diesem Ordner, damit die Links funktionieren.
+
+Um eine frühere Aufzeichnung zu öffnen, gib ihre **Research ID** ein und wähle **Open capture report**, bevor du eine neue Aufzeichnung startest. Der Bericht verlinkt frühere Dateien automatisch, wenn sie im Download-Verlauf dieses Browsers unter `Downloads/web-live-tracker/<research-id>/` zu finden sind. Die Rohdaten enthalten die Details früherer Aufzeichnungen. Wenn der Download-Verlauf gelöscht wurde, findest du die Dateien weiterhin in diesem Ordner.
 
 Öffne die Firefox-Downloadliste über den Download-Pfeil in der Symbolleiste oder suche im Download-Ordner nach `web-live-tracker/einmaleins-test`. Darunter findest du den Datumsordner und die Ordner für die aufgerufenen Webadressen.
 

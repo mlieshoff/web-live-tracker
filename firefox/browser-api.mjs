@@ -16,9 +16,33 @@ export function readResponseContent(entry, callback) {
 }
 
 export async function saveExtensionFile(filename, data) {
-  const result = await globalThis.browser.runtime.sendMessage({ action: "saveCaptureFile", filename, data });
+  return (await saveFile("saveCaptureFile", filename, data)).filename;
+}
+
+export function saveCaptureReport(filename, data) {
+  return saveFile("saveReportFile", filename, data);
+}
+
+async function saveFile(action, filename, data) {
+  const result = await globalThis.browser.runtime.sendMessage({ action, filename, data });
   if (!result?.filename) {
     throw new DownloadError(result?.error ?? "Firefox could not save the file.");
   }
-  return result.filename;
+  return result;
+}
+
+export function openCaptureReport(id) {
+  return globalThis.browser.runtime.sendMessage({ action: "showCaptureReport", id }).then((opened) => {
+    if (!opened) throw new Error("Could not open the report page.");
+  });
+}
+
+export async function findEarlierDownloads(researchId) {
+  const items = await globalThis.browser.runtime.sendMessage({ action: "findEarlierDownloads", researchId });
+  if (!Array.isArray(items)) throw new Error("Firefox could not read earlier downloads.");
+  return items;
+}
+
+export function resolveDownloadRoot(researchId) {
+  return globalThis.browser.runtime.sendMessage({ action: "resolveDownloadRoot", researchId });
 }
