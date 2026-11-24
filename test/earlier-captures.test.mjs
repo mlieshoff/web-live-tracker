@@ -101,3 +101,18 @@ test("an ID matching the project folder works for both direct and parent selecti
     assert.equal(entries[0].directory, directory);
   }
 });
+
+test("a shared response reference requires an eligible file in the same research folder", async () => {
+  const folder = `study/${directory}`;
+  const paths = ["../another/response.txt", `${directory}/response.html`, `${directory}/response.txt`];
+  for (const responseFilePath of paths) {
+    const entries = await readSelectedCaptureFiles([
+      selected(`${folder}/exchange.json`, JSON.stringify({
+        ...JSON.parse(index), responseFile: null, responseFilePath,
+      })),
+      selected(`${folder}/response.html`),
+    ], "study");
+    const [record] = earlierCaptureRecords(entries, "study", []).records;
+    assert.deepEqual(record.response, { status: "missing-from-folder", path: null });
+  }
+});

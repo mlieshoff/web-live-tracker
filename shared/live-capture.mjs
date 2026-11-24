@@ -12,6 +12,7 @@ export function createLiveCapture({ requestFinished, writeFile, writeReport, rea
   let active = false;
   let startedAt;
   let records;
+  let responseFiles;
   let report;
   let lastCapture;
   let queue = Promise.resolve();
@@ -47,7 +48,7 @@ export function createLiveCapture({ requestFinished, writeFile, writeReport, rea
           throw new Error("Payload unavailable");
         }
         exchange.response = await retryUnavailableMedia(retry, exchange.response);
-        const result = await exportPayloads(writeFile, id, [exchange], date);
+        const result = await exportPayloads(writeFile, id, [exchange], date, responseFiles);
         saved += result.saved;
         if (writeReport) records.push(...result.records);
         if (result.errors.length) {
@@ -121,6 +122,7 @@ export function createLiveCapture({ requestFinished, writeFile, writeReport, rea
       researchId = id;
       startedAt = new Date(now());
       records = [];
+      responseFiles = new Map();
       report = undefined;
       captured = 0;
       saved = 0;

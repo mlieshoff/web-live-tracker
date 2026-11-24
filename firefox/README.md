@@ -22,6 +22,8 @@ The temporary add-on stays loaded until Firefox restarts or you remove it. [Mozi
 
 Requests and responses that Firefox provides are saved automatically with their file types when known. `exchange.json` identifies the body files and records partial or unavailable responses. The media retry follows the same anonymous request rules as the Chrome version.
 
+Identical response bytes within a capture share one saved file. Every exchange keeps its raw record. If it shares a response, `responseFilePath` points to that file relative to the research folder. Partial responses are shared only when their byte ranges are known and match.
+
 The capture report groups saved files by type and links to the files and raw records. **What needs attention** explains missing files and partial media. Reopen the report from Downloads or find `capture-*.html` in `web-live-tracker/<research-id>/`. Keep it in that folder so the file links work.
 
 To review a previous capture, enter its **Research ID** and select **Open capture report** before or after recording. If asked, select the matching folder under `Downloads/web-live-tracker/` or pick the parent `web-live-tracker` folder. The report reads the files directly from the selected folder, so clearing download history has no effect. Firefox asks you to select the folder when a fresh read is needed.

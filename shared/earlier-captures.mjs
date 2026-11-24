@@ -13,15 +13,15 @@ function decodeComponent(part) {
   );
 }
 
-function archiveBody(direction, data, folder, names) {
+function archiveBody(direction, data, folder, names, sharedPath) {
   const status = data?.[`${direction}Body`];
   const name = data?.[`${direction}File`];
   const onDisk = isExportedBodyFilename(name, direction) && names.includes(name);
   const found = onDisk ? name : names.find((candidate) => isExportedBodyFilename(candidate, direction));
 
-  if (found) return {
+  if (found || sharedPath) return {
     status: "saved",
-    path: `${folder}/${found}`,
+    path: sharedPath ?? `${folder}/${found}`,
     source: direction === "response" ? data?.responseSource : undefined,
   };
 
@@ -50,15 +50,20 @@ export function earlierCaptureRecords(entries, researchId, currentRecords) {
   const currentFolders = new Set(currentRecords.flatMap(({ indexPath, request, response }) =>
     [indexPath, request?.path, response?.path].filter(Boolean).map((path) => path.slice(0, path.lastIndexOf("/")))
   ));
+  const validEntries = entries.filter(({ directory, files }) => {
+    if (typeof directory !== "string" || !Array.isArray(files)) return false;
+    const parts = directory.split("/");
+    return parts.length >= 4 && dateFolder.test(parts[0]) && exchangeFolder.test(parts.at(-1)) &&
+      parts.every((part) => part && part !== "." && part !== ".." && !part.includes("\\"));
+  });
+  const responsePaths = new Set(validEntries.flatMap(({ directory, files }) =>
+    files.filter((name) => isExportedBodyFilename(name, "response")).map((name) => `${directory}/${name}`)
+  ));
   const records = [];
   let unreadable = 0;
 
-  for (const { directory, files, index } of entries) {
-    if (typeof directory !== "string" || !Array.isArray(files)) continue;
+  for (const { directory, files, index } of validEntries) {
     const parts = directory.split("/");
-    if (parts.length < 4 || !dateFolder.test(parts[0]) || !exchangeFolder.test(parts.at(-1)) ||
-        parts.some((part) => !part || part === "." || part === ".." || part.includes("\\"))) continue;
-
     const folder = prefix + directory;
     if (currentFolders.has(folder)) continue;
 
@@ -71,7 +76,9 @@ export function earlierCaptureRecords(entries, researchId, currentRecords) {
     if (!parsed && files.some((name) => rawRecordName.test(name))) unreadable += 1;
 
     const request = archiveBody("request", parsed?.data, folder, files);
-    const response = archiveBody("response", parsed?.data, folder, files);
+    const reusedPath = parsed?.data.responseFilePath;
+    const sharedPath = responsePaths.has(reusedPath) ? prefix + reusedPath : undefined;
+    const response = archiveBody("response", parsed?.data, folder, files, sharedPath);
     if (!parsed && !request.path && !response.path) continue;
 
     records.push({

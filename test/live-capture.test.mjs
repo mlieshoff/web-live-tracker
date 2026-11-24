@@ -1,5 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { readSelectedCaptureFiles } from "../shared/capture-folder.mjs";
+import { earlierCaptureRecords } from "../shared/earlier-captures.mjs";
+import { captureReport } from "../shared/report.mjs";
 import { createLiveCapture } from "../shared/live-capture.mjs";
 import { downloadFile } from "../shared/export.mjs";
 import { readResponseContent } from "../chrome/browser-api.mjs";
@@ -18,12 +21,12 @@ function networkEvent() {
   };
 }
 
-function entry(path, date) {
+function entry(path, date, body = `Example response for ${path}`) {
   return {
     startedDateTime: date.toISOString(),
     request: { url: `https://example.test/${path}`, method: "GET", bodySize: 0 },
     response: { status: 200, content: { mimeType: "text/plain" } },
-    getContent: (callback) => callback("example body", ""),
+    getContent: (callback) => callback(body, ""),
   };
 }
 
@@ -333,4 +336,120 @@ test("a current report can be completed with folder contents after stopping", as
   assert.equal(saved.historyOnly, false);
   assert.match(html, /earlier\/01234567-abcd-4567-1\/response.txt/);
   assert.match(html, /2026-01-01\/example.test\/new\//);
+});
+
+test("different request timestamps and identical response bytes open the same live and rebuilt report file", async () => {
+  const first = new Date(2026, 0, 1, 23, 59);
+  const next = new Date(2026, 0, 2, 0, 1);
+  const event = networkEvent();
+  const files = new Map();
+  let reportPath;
+  const capture = createLiveCapture({
+    requestFinished: event,
+    async writeFile(path, data) {
+      const actualPath = path.replace(/response\.txt$/, "response (1).txt");
+      files.set(actualPath, data);
+      return actualPath.split("/").at(-1);
+    },
+    async writeReport(path, data) {
+      reportPath = path;
+      files.set(path, data);
+      return { id: 1, filename: path.split("/").at(-1) };
+    },
+    readResponseContent,
+    onStatus() {},
+    now: () => first.getTime() - 1,
+  });
+
+  capture.start("study");
+  event.emit(entry("same?timestamp=1", first, "Café"));
+  const binary = entry("same?timestamp=2", next);
+  binary.getContent = (callback) => callback("Q2Fmw6k=", "base64");
+  event.emit(binary);
+  await capture.stop();
+
+  const [savedPayload] = [...files.keys()].filter((path) => path.endsWith("/response (1).txt"));
+  const rawRecords = await Promise.all([...files].filter(([path]) => path.endsWith("/exchange.json"))
+    .map(async ([, blob]) => JSON.parse(await blob.text())));
+  assert.deepEqual(rawRecords.map((record) => record.timestamp), [first.toISOString(), next.toISOString()]);
+  assert.deepEqual(rawRecords.map((record) => record.responseBody), ["saved", "saved"]);
+  assert.equal(rawRecords[0].responseFile, "response (1).txt");
+  assert.equal(rawRecords[1].responseFile, null);
+  assert.equal(rawRecords[1].responseFilePath, savedPayload.slice("web-live-tracker/study/".length));
+  assert.equal([...files.keys()].filter((path) => /\/response.*\.[^/]+$/.test(path)).length, 1);
+
+  const selected = [...files].filter(([path]) => !path.endsWith(".html"))
+    .map(([path, blob]) => Object.assign(blob, { webkitRelativePath: path.slice("web-live-tracker/".length) }));
+  const entries = await readSelectedCaptureFiles(selected, "study");
+  const rebuilt = captureReport({ researchId: "study", startedAt: first, ...earlierCaptureRecords(entries, "study", []) });
+  for (const report of [files.get(reportPath), rebuilt]) {
+    const savedSection = (await report.text()).split('<section id="issues">')[0];
+    const links = [...savedSection.matchAll(/href="(\.\/[^"]+\/response%20\(1\)\.txt)"/g)].map((match) => match[1]);
+    const targets = links.map((href) => decodeURIComponent(new URL(href, `file:///${reportPath}`).pathname.slice(1)));
+    assert.deepEqual(targets, [savedPayload, savedPayload]);
+    assert.deepEqual(await Promise.all(targets.map((path) => files.get(path).text())), ["Café", "Café"]);
+  }
+});
+
+test("failed response writes can retry and each new capture has a fresh response cache", async () => {
+  const date = new Date(2026, 0, 1);
+  const event = networkEvent();
+  const attempts = [];
+  const capture = createLiveCapture({
+    requestFinished: event,
+    async writeFile(path) {
+      if (path.endsWith("/response.txt")) {
+        attempts.push(path);
+        if (attempts.length === 1) throw new Error("First save failed");
+      }
+      return path.split("/").at(-1);
+    },
+    readResponseContent,
+    onStatus() {},
+    now: () => date.getTime() - 1,
+  });
+
+  capture.start("study");
+  for (const name of ["failed", "retried", "reused"]) event.emit(entry(name, date, "same response"));
+  await capture.stop();
+  capture.start("study");
+  event.emit(entry("new-capture", date, "same response"));
+  await capture.stop();
+
+  assert.deepEqual(attempts.map((path) => path.split("/").at(-3)), ["failed", "retried", "new-capture"]);
+});
+
+test("partial response reuse requires a known matching range and matching bytes", async () => {
+  const date = new Date(2026, 0, 1);
+  const event = networkEvent();
+  const written = [];
+  const capture = createLiveCapture({
+    requestFinished: event,
+    async writeFile(path) {
+      if (path.endsWith("/response.txt")) written.push(path.split("/").at(-3));
+      return path.split("/").at(-1);
+    },
+    readResponseContent,
+    onStatus() {},
+    now: () => date.getTime() - 1,
+  });
+
+  function partial(name, range, body = "abc") {
+    const response = entry(name, date, body);
+    response.response.status = 206;
+    if (range) response.response.headers = [{ name: "Content-Range", value: range }];
+    return response;
+  }
+
+  capture.start("study");
+  event.emit(partial("first", "bytes 0-2/20"));
+  event.emit(partial("same-range", "bytes 0-2/20"));
+  event.emit(partial("other-range", "bytes 3-5/20"));
+  event.emit(partial("different-bytes", "bytes 0-2/20", "xyz"));
+  event.emit(partial("unknown-1"));
+  event.emit(partial("unknown-2"));
+  event.emit(entry("full", date, "abc"));
+  await capture.stop();
+
+  assert.deepEqual(written, ["first", "other-range", "different-bytes", "unknown-1", "unknown-2", "full"]);
 });
