@@ -167,7 +167,7 @@ function exchangePath(url) {
   return path;
 }
 
-async function saveBody(saveFile, base, name, body, mediaType) {
+function bodyFile(name, body, mediaType) {
   if (body.status !== "saved") {
     return null;
   }
@@ -182,10 +182,23 @@ async function saveBody(saveFile, base, name, body, mediaType) {
   const extension = knownExtension ?? (text ? "txt" : "bin");
   const type = knownExtension ? knownType : (text ? "text/plain;charset=utf-8" : "application/octet-stream");
   const filename = `${name}.${extension}`;
-  return saveFile(`${base}/${filename}`, new Blob([body.data], { type }));
+  return { filename, data: new Blob([body.data], { type }) };
 }
 
-export async function exportPayloads(writeFile, researchId, exchanges, date) {
+async function responseKey(file, metadata, responseFiles) {
+  if (!file || !responseFiles || (metadata.status === 206 && !metadata.responseRange)) return null;
+  try {
+    const digest = await crypto.subtle.digest("SHA-256", await file.data.arrayBuffer());
+    const hash = Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
+    const range = metadata.status === 206 ? metadata.responseRange : "full";
+    return `${range}:${hash}`;
+  } catch {
+    // Preserve the response when the browser cannot hash it.
+    return null;
+  }
+}
+
+export async function exportPayloads(writeFile, researchId, exchanges, date, responseFiles) {
   const folder = exportFolder(researchId, date);
   const batch = crypto.randomUUID().slice(0, 18);
   const result = { saved: 0, errors: [], records: [] };
@@ -207,26 +220,34 @@ export async function exportPayloads(writeFile, researchId, exchanges, date) {
     const url = new URL(metadata.url);
     const id = `${batch}-${index + 1}`;
     const base = `${folder}/${safeComponent(url.host)}/${exchangePath(url)}/${id}`;
-    const requestFile = await saveBody(saveFile, base, "request", request, requestMediaType);
-    const responseFile = await saveBody(saveFile, base, "response", response, metadata.mediaType);
+    const requestBodyFile = bodyFile("request", request, requestMediaType);
+    const requestFile = requestBodyFile ? await saveFile(`${base}/${requestBodyFile.filename}`, requestBodyFile.data) : null;
+    const responseBodyFile = bodyFile("response", response, metadata.mediaType);
+    const key = await responseKey(responseBodyFile, metadata, responseFiles);
+    const reusedPath = key ? responseFiles.get(key) : undefined;
+    const responseFile = responseBodyFile && !reusedPath
+      ? await saveFile(`${base}/${responseBodyFile.filename}`, responseBodyFile.data) : null;
+    const savedPath = (name) => name ? `${base}/${name}` : null;
+    const responsePath = reusedPath ?? savedPath(responseFile);
+    if (key && responseFile) responseFiles.set(key, responsePath);
     const indexFile = await saveFile(`${base}/exchange.json`, jsonFile({
       ...metadata,
       requestBody: request.status === "saved" && !requestFile ? "download-failed" : request.status,
-      responseBody: response.status === "saved" && !responseFile ? "download-failed" : response.status,
+      responseBody: response.status === "saved" && !responsePath ? "download-failed" : response.status,
       responseUnavailableReason: response.reason,
       responseSource: response.source,
       responseRetryError: response.retryError,
       requestFile,
       responseFile,
+      responseFilePath: reusedPath?.slice(`web-live-tracker/${researchId}/`.length),
     }));
-    const savedPath = (name) => name ? `${base}/${name}` : null;
     result.records.push({
       metadata,
       indexPath: savedPath(indexFile),
       request: { status: request.status, path: savedPath(requestFile) },
       response: {
         status: response.status,
-        path: savedPath(responseFile),
+        path: responsePath,
         source: response.source,
       },
     });

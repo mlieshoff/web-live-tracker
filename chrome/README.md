@@ -46,6 +46,8 @@ The filenames above are examples. Each exchange has its own folder, so repeated 
 - **`request.*`** contains data the browser sent when Chrome provides the body. A request that sends no body has no request file.
 - **`response.*`** contains data the website sent back when Chrome provides the body. Open a `.png` or `.jpg` in an image viewer and a `.json` or `.txt` in a text editor.
 
+Within one capture, identical response bytes are saved once. Every exchange keeps its own raw record and report link. When an exchange reuses a response from another exchange folder, `responseFilePath` in `exchange.json` gives the path relative to the research folder. The shared file keeps the first successful save’s filename. Partial responses are shared only when their byte ranges are known and match.
+
 Audio and video can arrive as byte ranges. For HTTP 206 responses, `responseRange` in `exchange.json` records the range when the server provides it. A saved range can be only part of a media file. When Chrome withholds a body, `responseUnavailableReason` records why the file is missing. Streams that never finish do not produce a completed exchange.
 
 For an unavailable complete audio or video GET, the tracker can make one anonymous request to an eligible public URL. It skips URLs with query strings, private addresses, and authenticated requests. The retry uses no cookies or referrer, follows no redirects, and requires the server to allow cross-origin access. It is limited to 30 seconds and 64 MiB. The metadata marks a recovered file with `responseSource: "refetched"` because it comes from a second request. If the retry fails, `responseRetryError` records why.
@@ -60,7 +62,7 @@ The tracker uses the declared media type or a recognizable binary signature to c
 | The request count stays at zero | Check that the panel says **Capturing.** and reload the website while capture is active. |
 | Chrome prompts for each file | Check **Ask where to save each file before downloading** at `chrome://settings/downloads`. Turning it off lets Chrome use its configured download folder automatically. |
 | Some files fail to save | Read the error in the panel and check `chrome://downloads` for the download status. Other exchanges may still save. |
-| A folder contains only `exchange.json` | Look at `requestBody` and `responseBody` to see whether the body was absent, unavailable, or failed to save. |
+| A folder contains only `exchange.json` | Check `responseFilePath` for a shared response. Look at `requestBody` and `responseBody` for absent, unavailable, or failed saves. |
 
 ## Development
 
