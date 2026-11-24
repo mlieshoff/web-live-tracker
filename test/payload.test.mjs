@@ -127,7 +127,7 @@ test("exportPayloads reports a blocked file and still saves later payloads and m
   const result = await exportPayloads(downloadFile.bind(null, downloads), "study", [exchange, exchange], new Date(2026, 0, 3));
 
   assert.deepEqual({
-    result,
+    result: { saved: result.saved, errors: result.errors },
     attempted: files.size,
     requestStatus: savedMetadata.requestBody,
     requestFile: savedMetadata.requestFile,

@@ -21,7 +21,9 @@
         <div class="capture-actions">
           <button id="start" type="submit" disabled aria-describedby="save-location">Start capture</button>
           <button id="stop" type="button" disabled>Stop capture</button>
+          <button id="open-report" type="button" hidden>Open capture report</button>
         </div>
+        <p id="report-error" class="error-message" role="alert"></p>
         <p id="save-location" class="save-location">Saves raw request and response bodies from this tab under <code>web-live-tracker</code> in your downloads folder.</p>
         <p id="network-monitor-tip" class="save-location" hidden></p>
       </form>

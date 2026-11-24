@@ -1,4 +1,4 @@
-import { downloadFile } from "../shared/export.mjs";
+import { downloadFile, downloadWithDetails } from "../shared/export.mjs";
 
 export const requestFinished = globalThis.chrome?.devtools?.network?.onRequestFinished;
 export const networkMonitorTip = "";
@@ -13,4 +13,12 @@ export function readResponseContent(entry, callback) {
 
 export function saveExtensionFile(filename, data) {
   return downloadFile(globalThis.chrome.downloads, filename, data);
+}
+
+export function saveCaptureReport(filename, data) {
+  return downloadWithDetails(globalThis.chrome.downloads, filename, data);
+}
+
+export function openCaptureReport(id) {
+  return globalThis.chrome.downloads.open(id);
 }

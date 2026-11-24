@@ -16,9 +16,19 @@ export function readResponseContent(entry, callback) {
 }
 
 export async function saveExtensionFile(filename, data) {
+  return (await saveCaptureReport(filename, data)).filename;
+}
+
+export async function saveCaptureReport(filename, data) {
   const result = await globalThis.browser.runtime.sendMessage({ action: "saveCaptureFile", filename, data });
   if (!result?.filename) {
     throw new DownloadError(result?.error ?? "Firefox could not save the file.");
   }
-  return result.filename;
+  return result;
+}
+
+export function openCaptureReport(id) {
+  return globalThis.browser.runtime.sendMessage({ action: "showCaptureReport", id }).then((opened) => {
+    if (!opened) throw new Error("Could not open the report page.");
+  });
 }

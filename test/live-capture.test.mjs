@@ -85,7 +85,7 @@ test("live capture saves while active and drains under the original ID after sto
     "web-live-tracker/study/2026-01-01/example.test/second/response.txt",
     "web-live-tracker/study/2026-01-01/example.test/second/exchange.json",
   ]);
-  assert.deepEqual(lastStatus, { active: false, captured: 2, pending: 0, saved: 4, failed: 0, errorCount: 0, errors: [] });
+  assert.deepEqual(lastStatus, { active: false, captured: 2, pending: 0, saved: 4, failed: 0, errorCount: 0, errors: [], report: undefined });
 });
 
 test("live capture reports a failed exchange and saves subsequent files", async () => {
@@ -128,6 +128,7 @@ test("live capture reports a failed exchange and saves subsequent files", async 
     saved: 2,
     failed: 1,
     errorCount: 2,
+    report: undefined,
     errors: [
       { target: failedPaths[0], reason: "The browser rejected the download filename." },
       { target: failedPaths[1], reason: "The download failed to start. Check your browser’s downloads." },
@@ -174,4 +175,72 @@ test("live capture keeps the latest error details and clears them for a new capt
     newCount: 0,
     newHistory: [],
   });
+});
+
+test("stop saves one report after the raw files and links to their final names across midnight", async () => {
+  const firstDate = new Date(2025, 11, 31, 23, 59);
+  const secondDate = new Date(2026, 0, 1, 0, 1);
+  const event = networkEvent();
+  const allowSaves = Promise.withResolvers();
+  const allowReport = Promise.withResolvers();
+  const reportStarted = Promise.withResolvers();
+  const downloads = new Map();
+  let lastStatus;
+  const capture = createLiveCapture({
+    requestFinished: event,
+    async writeFile(path) {
+      await allowSaves.promise;
+      const name = path.split("/").at(-1).replace("response.txt", "response #2.txt");
+      downloads.set(path.slice(0, path.lastIndexOf("/") + 1) + name, true);
+      return name;
+    },
+    async writeReport(path, data) {
+      const html = await data.text();
+      reportStarted.resolve({ path, html });
+      await allowReport.promise;
+      return { id: 7, filename: path.split("/").at(-1) };
+    },
+    readResponseContent,
+    onStatus: (status) => { lastStatus = status; },
+    now: () => firstDate.getTime() - 1,
+  });
+
+  capture.start("study");
+  event.emit(entry("before", firstDate));
+  event.emit(entry("after", secondDate));
+  const stopped = capture.stop();
+  assert.equal(capture.stop(), stopped);
+  allowSaves.resolve();
+  const { path, html } = await reportStarted.promise;
+  assert.equal(lastStatus.report.state, "saving");
+  capture.start("another-study");
+  assert.equal(event.listeners.size, 0);
+  allowReport.resolve();
+  await stopped;
+
+  const links = [...new Set(Array.from(html.matchAll(/href="(\.\/[^"]+)"/g), ([, href]) => href))];
+  const reportUrl = new URL(path, "file:///");
+  assert.deepEqual(links.map((href) => decodeURIComponent(new URL(href, reportUrl).pathname.slice(1))).sort(),
+    [...downloads.keys()].sort());
+  assert.match(html, /response%20%232\.txt/);
+  assert.deepEqual(lastStatus.report, { state: "ready", id: 7, filename: path.split("/").at(-1) });
+});
+
+test("report download failure is shown and a new capture can start", async () => {
+  const event = networkEvent();
+  let lastStatus;
+  const capture = createLiveCapture({
+    requestFinished: event,
+    async writeReport() {
+      throw new Error("Download failed");
+    },
+    onStatus: (status) => { lastStatus = status; },
+  });
+
+  capture.start("study");
+  await capture.stop();
+  assert.deepEqual(lastStatus.report, { state: "failed", error: "The capture report could not be saved." });
+  capture.start("next-study");
+  assert.equal(lastStatus.report, undefined);
+  assert.equal(lastStatus.active, true);
 });

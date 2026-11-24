@@ -19,11 +19,15 @@ Chrome loads the extension from that folder, so keep it in place. After updating
 2. Select **Web Live Tracker** in the DevTools tab bar. If it’s hidden, open the **»** overflow menu.
 3. Enter a **Research ID**, such as `my-first-capture`. Start with a letter or number and use up to 64 letters, numbers, hyphens, or underscores. Reserved folder names such as `CON` are rejected.
 4. Select **Start capture**, reload the page to include its initial requests, and interact with it as usual. **Files saved** increases as Chrome writes files.
-5. Select **Stop capture** when finished. Keep DevTools open until **Pending exchanges** reaches **0**. The research ID can be changed once the pending saves finish.
+5. Select **Stop capture** when finished. Keep DevTools open until the capture report is ready. You can change the research ID after the report finishes saving.
 
 Starting capture saves any available raw request and response bodies. These files can contain private information. Use a public page without signing in for a first test and review files before sharing them.
 
 ## Find and read the files
+
+After selecting **Stop capture**, keep DevTools open until the panel says your report is ready. Select **Open capture report**. The report groups saved files by type and links to the files and raw records. **What needs attention** explains missing files and partial media.
+
+You can reopen the report from Downloads or find `capture-*.html` in `web-live-tracker/<research-id>/`. Keep it in that folder so the file links work.
 
 The base folder is Chrome’s configured download location. To find it, open `chrome://downloads` and use the folder icon next to a saved file, or check the location at `chrome://settings/downloads`.
 

@@ -71,12 +71,16 @@ export function jsonFile(data) {
 }
 
 export async function downloadFile(downloads, filename, data) {
+  return (await downloadWithDetails(downloads, filename, data)).filename;
+}
+
+export async function downloadWithDetails(downloads, filename, data) {
   const url = URL.createObjectURL(data);
   try {
     const id = await downloads.download({ url, filename, conflictAction: "uniquify" });
     const completedPath = await waitForDownload(downloads, id);
     const actualPath = completedPath || (await downloads.search({ id }).catch(() => []))[0]?.filename;
-    return (actualPath || filename).split(/[\\/]/).at(-1);
+    return { id, filename: (actualPath || filename).split(/[\\/]/).at(-1) };
   } catch (error) {
     if (error instanceof DownloadError) {
       throw error;

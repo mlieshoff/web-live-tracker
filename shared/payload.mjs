@@ -181,7 +181,7 @@ async function saveBody(saveFile, base, name, body, mediaType) {
 export async function exportPayloads(writeFile, researchId, exchanges, date) {
   const folder = exportFolder(researchId, date);
   const batch = crypto.randomUUID().slice(0, 18);
-  const result = { saved: 0, errors: [] };
+  const result = { saved: 0, errors: [], records: [] };
   async function saveFile(filename, data) {
     try {
       const savedName = await writeFile(filename, data);
@@ -202,7 +202,7 @@ export async function exportPayloads(writeFile, researchId, exchanges, date) {
     const base = `${folder}/${safeComponent(url.host)}/${exchangePath(url)}/${id}`;
     const requestFile = await saveBody(saveFile, base, "request", request, requestMediaType);
     const responseFile = await saveBody(saveFile, base, "response", response, metadata.mediaType);
-    await saveFile(`${base}/exchange.json`, jsonFile({
+    const indexFile = await saveFile(`${base}/exchange.json`, jsonFile({
       ...metadata,
       requestBody: request.status === "saved" && !requestFile ? "download-failed" : request.status,
       responseBody: response.status === "saved" && !responseFile ? "download-failed" : response.status,
@@ -212,6 +212,17 @@ export async function exportPayloads(writeFile, researchId, exchanges, date) {
       requestFile,
       responseFile,
     }));
+    const savedPath = (name) => name ? `${base}/${name}` : null;
+    result.records.push({
+      metadata,
+      indexPath: savedPath(indexFile),
+      request: { status: request.status, path: savedPath(requestFile) },
+      response: {
+        status: response.status,
+        path: savedPath(responseFile),
+        source: response.source,
+      },
+    });
   }
   return result;
 }
