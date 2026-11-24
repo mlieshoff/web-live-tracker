@@ -1,5 +1,8 @@
 # Web Live Tracker
 
+[![Tests](https://github.com/mlieshoff/web-live-tracker/actions/workflows/tests.yml/badge.svg?branch=main&event=push)](https://github.com/mlieshoff/web-live-tracker/actions/workflows/tests.yml?query=branch%3Amain)
+[![Release workflow](https://github.com/mlieshoff/web-live-tracker/actions/workflows/story-release.yml/badge.svg)](https://github.com/mlieshoff/web-live-tracker/actions/workflows/story-release.yml)
+
 Web Live Tracker is a desktop browser extension for Chrome and Firefox. It captures requests and responses from the tab you inspect and saves available files locally, organized by research ID, date, and URL.
 
 | Browser | Installation and usage |
