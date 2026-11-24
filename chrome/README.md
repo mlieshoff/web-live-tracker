@@ -27,7 +27,7 @@ Starting capture saves any available raw request and response bodies. These file
 
 After selecting **Stop capture**, keep DevTools open until the panel says your report is ready. Select **Open capture report**. The report groups saved files by type and links to the files and raw records. **What needs attention** explains missing files and partial media.
 
-The report shows small previews for supported images and videos using the capture files. SVGs are listed under **Images** and small SVGs appear as non-interactive image previews. Captured SVGs keep their original neutral export format. Audio and media without a preview remain linked.
+The report shows small previews for supported images and videos using the capture files. SVGs are listed under **Images** and small SVGs appear as non-interactive image previews. Captured SVGs keep their original neutral export format. Select an SVG preview to open the full-size image in a new tab. File links also open in new tabs. Audio and media without a preview remain linked.
 
 You can reopen the report from Downloads or find `capture-*.html` in `web-live-tracker/<research-id>/`. Keep it in that folder so the file links work.
 

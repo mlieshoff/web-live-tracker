@@ -37,7 +37,9 @@ test("the report groups saved files, links raw records, and explains incomplete 
   assert.match(html, /&lt;b&gt;Study&lt;\/b&gt;/);
   assert.match(html, /Images.*href="[^"]+\/response\.png".*Audio and video.*href="[^"]+\/response\.mp4".*Documents.*href="[^"]+\/request\.json"/);
   assert.match(html, /Partial file/);
-  assert.match(html, /href="[^"]+\/exchange\.json">Open raw record/);
+  assert.match(html, /target="_blank" rel="noopener noreferrer" href="[^"]+\/exchange\.json">Open raw record/);
+  assert.match(html, /target="_blank" rel="noopener noreferrer" href="[^"]+\/response\.png"/);
+  assert.match(html, /<a href="#files">Saved files<\/a>/);
   assert.match(html, /provided the file, but it could not be saved/);
   assert.match(html, /could not provide this file/);
   assert.match(html, /technical record could not be saved/);

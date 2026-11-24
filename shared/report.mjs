@@ -16,9 +16,29 @@ function fileHref(path) {
   return `./${escapeHtml(href)}`;
 }
 
-function fileLink(path, label, preview = "") {
+function newTabLink(href, label, preview = "") {
   const className = preview ? ' class="preview-link"' : "";
-  return `<a${className} href="${fileHref(path)}">${preview}${escapeHtml(label)}</a>`;
+  return `<a${className} target="_blank" rel="noopener noreferrer" href="${href}">${preview}${escapeHtml(label)}</a>`;
+}
+
+function fileLink(path, label, preview) {
+  return newTabLink(fileHref(path), label, preview);
+}
+
+function fileRow(file, caption, suffix, preview, svgViews) {
+  const view = file.svg && svgViews.get(file.path);
+  if (view) return `<li>${newTabLink(`#${view}`, caption)}${suffix}</li>`;
+  if (!file.svg || !preview) return `<li>${fileLink(file.path, caption, preview)}${suffix}</li>`;
+
+  const id = `svg-view-${svgViews.size + 1}`;
+  svgViews.set(file.path, id);
+  return `<li id="${id}" class="svg-view">
+    ${newTabLink(`#${id}`, caption, preview)}<span class="file-details">${suffix}</span>
+    <div class="svg-view-actions">
+      <a href="#files">Back to report</a>
+      ${fileLink(file.path, "Open saved file")}
+    </div>
+  </li>`;
 }
 
 function fileExtension(file) {
@@ -76,6 +96,7 @@ export function captureReport({ researchId, startedAt, records, unreadable = 0, 
   const exchanges = [];
   const sites = new Set();
   const previewed = new Set();
+  const svgViews = new Map();
   let saved = 0;
 
   for (const [index, record] of records.entries()) {
@@ -103,9 +124,8 @@ export function captureReport({ researchId, startedAt, records, unreadable = 0, 
           const earlierLabel = earlier ? " · Earlier capture" : "";
           const preview = previewed.has(file.path) ? "" : mediaPreview(file, direction === "response" && partial);
           if (preview) previewed.add(file.path);
-          groupedFiles.get(fileGroup(file)).push(
-            `<li>${fileLink(file.path, caption, preview)}${badges}${earlierLabel} · ${details}</li>`,
-          );
+          const suffix = `${badges}${earlierLabel} · ${details}`;
+          groupedFiles.get(fileGroup(file)).push(fileRow(file, caption, suffix, preview, svgViews));
           saved += 1;
         } else if (file.status !== "absent") {
           issues.push(`<li>${escapeHtml(name)} · ${label}. ${description} ${details}</li>`);
@@ -166,6 +186,46 @@ export function captureReport({ researchId, startedAt, records, unreadable = 0, 
     pointer-events: none;
   }
   :target { outline: 2px solid currentColor; outline-offset: .25rem; }
+  .svg-view-actions { display: none; }
+  main:has(.svg-view:target) { visibility: hidden; }
+  .svg-view:target {
+    position: fixed;
+    inset: 0;
+    box-sizing: border-box;
+    overflow: auto;
+    margin: 0;
+    padding: 1.5rem;
+    z-index: 1;
+    display: grid;
+    grid-template-rows: auto minmax(min-content, 1fr);
+    gap: 1rem;
+    visibility: visible;
+    background: Canvas;
+    color: CanvasText;
+    outline: none;
+  }
+  .svg-view:target .svg-view-actions {
+    grid-row: 1;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+  }
+  .svg-view:target .file-details { display: none; }
+  .svg-view:target .preview-link {
+    display: grid;
+    grid-template-rows: minmax(0, 1fr) auto;
+    justify-items: center;
+    min-height: 0;
+    color: CanvasText;
+    text-decoration: none;
+    pointer-events: none;
+  }
+  .svg-view:target .thumbnail {
+    width: 100%;
+    height: 100%;
+    max-height: calc(100dvh - 7rem);
+    margin: 0;
+  }
 </style>
 <main>
   <h1>${escapeHtml(researchId)} · Capture report</h1>

@@ -24,7 +24,7 @@ Nach einem Firefox-Neustart wiederholst du diese Schritte, um die Erweiterung er
 
 Der Bericht gruppiert gespeicherte Dateien nach Typ und verlinkt sie direkt. Unter **What needs attention** steht, warum Dateien fehlen oder unvollständig sind. Du findest den Bericht auch unter `web-live-tracker/<research-id>/capture-*.html`. Lass ihn in diesem Ordner, damit die Links funktionieren.
 
-Der Bericht zeigt kleine Vorschauen für unterstützte Bilder und Videos aus den gespeicherten Dateien. SVG-Dateien stehen unter **Images**. Kleine SVG-Dateien werden als nicht interaktive Bildvorschau angezeigt, während die Rohdateien ihr bisheriges Format behalten. Audiodateien und Dateien ohne Vorschau bleiben verlinkt.
+Der Bericht zeigt kleine Vorschauen für unterstützte Bilder und Videos aus den gespeicherten Dateien. SVG-Dateien stehen unter **Images**. Kleine SVG-Dateien werden als nicht interaktive Bildvorschau angezeigt, während die Rohdateien ihr bisheriges Format behalten. Klicke auf eine SVG-Vorschau, um das Bild in voller Größe in einem neuen Tab zu öffnen. Dateilinks öffnen ebenfalls einen neuen Tab. Audiodateien und Dateien ohne Vorschau bleiben verlinkt.
 
 Identische Antwortdaten werden innerhalb einer Aufzeichnung einmal gespeichert. Jede Anfrage behält ihren eigenen Rohdatensatz und Berichtlink. Bei einer gemeinsam genutzten Antwort verweist `responseFilePath` in `exchange.json` relativ zum Research-Ordner auf die Datei. Teilantworten werden nur bei bekanntem und gleichem Bytebereich zusammengefasst.
 
