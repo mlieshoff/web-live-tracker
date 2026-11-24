@@ -39,18 +39,4 @@ jobs:
       - name: Publish release
         env:
           GH_TOKEN: ${{ github.token }}
-          PR_NUMBER: ${{ github.event.pull_request.number }}
-        run: |
-          tag="story-pr-$PR_NUMBER"
-          if draft=$(gh release view "$tag" --json isDraft --jq .isDraft); then
-            if [[ "$draft" == false ]]; then
-              exit 0
-            fi
-          else
-            node scripts/story-release-notes.mjs > dist/release-notes.md
-            gh release create "$tag" --draft --target "$MERGE_SHA" \
-              --title "Story PR #$PR_NUMBER" --notes-file dist/release-notes.md
-          fi
-          gh release upload "$tag" --clobber \
-            dist/web-live-tracker-chrome.zip dist/web-live-tracker-firefox.zip
-          gh release edit "$tag" --draft=false --target "$MERGE_SHA"
+        run: bash scripts/publish-story-release.sh
