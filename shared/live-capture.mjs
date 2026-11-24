@@ -11,6 +11,7 @@ export function createLiveCapture({ requestFinished, writeFile, writeReport, rea
   let active = false;
   let startedAt;
   let records;
+  let unreadable;
   let report;
   let queue = Promise.resolve();
   let captured = 0;
@@ -66,14 +67,15 @@ export function createLiveCapture({ requestFinished, writeFile, writeReport, rea
   }, () => startedAt.getTime());
 
   return {
-    start(id) {
+    start(id, earlier = { records: [], unreadable: 0 }) {
       if (active || pending > 0 || report?.state === "saving") {
         return;
       }
       validateResearchId(id);
       researchId = id;
       startedAt = new Date(now());
-      records = [];
+      records = [...earlier.records];
+      unreadable = earlier.unreadable;
       report = undefined;
       captured = 0;
       saved = 0;
@@ -94,7 +96,7 @@ export function createLiveCapture({ requestFinished, writeFile, writeReport, rea
             try {
               const folder = exportFolder(researchId, startedAt).split("/").slice(0, -1).join("/");
               const stamp = startedAt.toISOString().replace(/[:.]/g, "-");
-              const file = captureReport({ researchId, startedAt, records });
+              const file = captureReport({ researchId, startedAt, records, unreadable });
               const result = await writeReport(`${folder}/capture-${stamp}.html`, file);
               report = { state: "ready", ...result };
             } catch (error) {

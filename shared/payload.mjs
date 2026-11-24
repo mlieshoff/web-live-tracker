@@ -34,6 +34,13 @@ const fileExtensions = new Map([
   ["video/x-matroska", "mkv"],
 ]);
 
+const savedExtensions = new Set([...fileExtensions.values(), "bin", "txt"]);
+
+export function isExportedBodyFilename(name, direction) {
+  const match = typeof name === "string" && /^(request|response)(?: ?\(\d+\))?\.([a-z0-9]+)$/i.exec(name);
+  return Boolean(match && match[1].toLowerCase() === direction && savedExtensions.has(match[2].toLowerCase()));
+}
+
 const activeTypes = new Set([
   "application/ecmascript",
   "application/javascript",

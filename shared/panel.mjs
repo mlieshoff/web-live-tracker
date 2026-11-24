@@ -1,8 +1,14 @@
+import { validateResearchId } from "./export.mjs";
 import { createLiveCapture } from "./live-capture.mjs";
 import { networkMonitorTip, openCaptureReport, readResponseContent, requestFinished, saveCaptureReport, saveExtensionFile } from "../browser/browser-api.mjs";
 
 const form = document.querySelector("#capture-form");
 const researchId = document.querySelector("#research-id");
+const chooseEarlier = document.querySelector("#choose-earlier");
+const earlierResult = document.querySelector("#earlier-result");
+const runtime = (globalThis.browser ?? globalThis.chrome).runtime;
+let earlier;
+let importUrl;
 const start = document.querySelector("#start");
 const stop = document.querySelector("#stop");
 const status = document.querySelector("#capture-status");
@@ -59,6 +65,7 @@ function onStatus({
 }) {
   const busy = active || pending > 0 || report?.state === "saving";
   researchId.disabled = busy;
+  chooseEarlier.hidden = busy;
   start.disabled = busy;
   stop.disabled = !active;
 
@@ -100,24 +107,56 @@ openReport.addEventListener("click", async () => {
   }
 });
 
+function showResearchIdError(error) {
+  idError.textContent = error.message;
+  researchId.setAttribute("aria-invalid", "true");
+  researchId.focus();
+}
+
+chooseEarlier.addEventListener("click", (event) => {
+  try {
+    validateResearchId(researchId.value);
+    const url = new URL("import.html", location.href);
+    url.search = new URLSearchParams({ researchId: researchId.value, capture: crypto.randomUUID() });
+    importUrl = chooseEarlier.href = url.href;
+  } catch (error) {
+    event.preventDefault();
+    showResearchIdError(error);
+  }
+});
+
+runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (!importUrl || sender.url !== importUrl || message?.action !== "includeEarlierCaptures") return;
+  if (researchId.disabled || message.researchId !== researchId.value) return;
+
+  importUrl = undefined;
+  earlier = message.earlier;
+  const size = earlier.records.length;
+  const skipped = earlier.unreadable ? ` (${earlier.unreadable} unreadable)` : "";
+  showText(earlierResult, `${size} earlier ${size === 1 ? "record" : "records"} selected${skipped}.`);
+  sendResponse(true);
+});
+
 form.addEventListener("submit", (event) => {
   event.preventDefault();
   try {
-    capture.start(researchId.value);
+    capture.start(researchId.value, earlier);
+    importUrl = undefined;
+    earlier = undefined;
+    showText(earlierResult, "");
     idError.textContent = "";
     researchId.removeAttribute("aria-invalid");
-    if (!stop.disabled) {
-      stop.focus();
-    }
+    if (!stop.disabled) stop.focus();
   } catch (error) {
-    idError.textContent = error.message;
-    researchId.setAttribute("aria-invalid", "true");
-    researchId.focus();
+    showResearchIdError(error);
   }
 });
 
 researchId.addEventListener("input", () => {
   idError.textContent = "";
+  importUrl = undefined;
+  earlier = undefined;
+  showText(earlierResult, "");
   researchId.removeAttribute("aria-invalid");
 });
 stop.addEventListener("click", () => {

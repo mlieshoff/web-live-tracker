@@ -1,4 +1,5 @@
 const button = document.querySelector("#open-report");
+const showButton = document.querySelector("#show-report");
 const message = document.querySelector("#report-message");
 const value = new URLSearchParams(location.search).get("id");
 const id = Number(value);
@@ -12,12 +13,21 @@ try {
 
   message.textContent = filename;
   button.hidden = false;
+  showButton.hidden = false;
+  showButton.addEventListener("click", async () => {
+    try {
+      await browser.downloads.show(id);
+      message.textContent = `Open ${filename} from the folder.`;
+    } catch {
+      message.textContent = `Could not show the file. Open ${filename} from Firefox Downloads.`;
+    }
+  });
   button.addEventListener("click", async () => {
     try {
       await browser.downloads.open(id);
-      message.textContent = filename;
+      message.textContent = "Firefox asked your system to open the report. If it didn’t open, select Show report in folder.";
     } catch {
-      message.textContent = `Could not open the report. Try opening ${filename} from Firefox Downloads.`;
+      message.textContent = "Could not open the report. Select Show report in folder.";
     }
   });
 } catch {

@@ -28,19 +28,24 @@ function fileDescription(file, direction) {
   if (file.status === "absent") {
     return direction === "response" ? "The website did not send a file." : "The browser did not send a file.";
   }
+  if (file.status === "invalid-file-name") return "The earlier record points to a file the tracker can’t link.";
+  if (file.status === "missing-from-folder") return "This file was saved earlier but is missing from the selected folder.";
   if (file.status === "saved") return "The browser provided the file, but it could not be saved.";
   return "The browser could not provide this file.";
 }
 
-export function captureReport({ researchId, startedAt, records }) {
+export function captureReport({ researchId, startedAt, records, unreadable = 0 }) {
   const groupedFiles = new Map(groups.map((group) => [group, []]));
   const issues = [];
+  if (unreadable > 0) {
+    issues.push(`<li>${unreadable} earlier ${unreadable === 1 ? "record could" : "records could"} not be read.</li>`);
+  }
   const exchanges = [];
   const sites = new Set();
   let saved = 0;
 
   for (const [index, record] of records.entries()) {
-    const { metadata, request, response, indexPath, error } = record;
+    const { metadata, request, response, indexPath, error, earlier } = record;
     const url = new URL(metadata.url);
     sites.add(url.host);
     const name = url.pathname === "/" ? url.host : `${url.pathname.split("/").filter(Boolean).at(-1)} · ${url.host}`;
@@ -58,8 +63,9 @@ export function captureReport({ researchId, startedAt, records }) {
         if (file.path) {
           const badges = direction === "response" && partial ? " · Partial file" : "";
           const caption = `${name} (${label.toLowerCase()})`;
+          const earlierLabel = earlier ? " · Earlier capture" : "";
           groupedFiles.get(fileGroup(file.path)).push(
-            `<li>${fileLink(file.path, caption)}${badges} · ${details}</li>`,
+            `<li>${fileLink(file.path, caption)}${badges}${earlierLabel} · ${details}</li>`,
           );
           saved += 1;
         } else if (file.status !== "absent") {
@@ -79,7 +85,7 @@ export function captureReport({ researchId, startedAt, records }) {
 
     const raw = indexPath ? fileLink(indexPath, "Open raw record (JSON)") : "";
     exchanges.push(`<details>
-      <summary>${escapeHtml(name)} · ${escapeHtml(metadata.timestamp)}</summary>
+      <summary>${escapeHtml(name)} · ${escapeHtml(metadata.timestamp)}${earlier ? " · Earlier capture" : ""}</summary>
       <p id="exchange-${index + 1}">${escapeHtml(metadata.method)} ${escapeHtml(metadata.url)} · Status ${escapeHtml(metadata.status)}</p>
       ${error ? `<p>${escapeHtml(error)}</p>` : `<ul>${notes.join("")}</ul>`}
       ${raw}
@@ -109,6 +115,7 @@ export function captureReport({ researchId, startedAt, records }) {
 <main>
   <h1>${escapeHtml(researchId)} · Capture report</h1>
   <p>Started ${escapeHtml(startedAt.toLocaleString())} · ${saved} ${saved === 1 ? "file" : "files"} saved</p>
+  ${records.some((record) => record.earlier) ? "<p>Includes earlier captures from the selected research folder.</p>" : ""}
   ${sites.size ? `<p>Websites recorded · ${escapeHtml([...sites].join(", "))}</p>` : ""}
   <nav aria-label="Report sections">
     <a href="#files">Saved files</a><a href="#issues">What needs attention</a><a href="#details">Technical details</a>

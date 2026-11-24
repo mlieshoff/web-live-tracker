@@ -28,6 +28,8 @@ Falls Chrome beim Speichern nach einem Ablageort fragt, findest du die Einstellu
 
 Der Bericht gruppiert gespeicherte Dateien nach Typ und verlinkt sie direkt. Unter **What needs attention** steht, warum Dateien fehlen oder unvollständig sind. Du findest den Bericht auch unter `web-live-tracker/<research-id>/capture-*.html`. Lass ihn in diesem Ordner, damit die Links funktionieren.
 
+Wenn du unter derselben Research ID weiter aufzeichnest, öffne vor **Start capture** den Abschnitt **Include earlier captures**. Klicke auf **Choose research folder**. Wähle im neuen Tab den Ordner für diese Research ID im Download-Unterordner `web-live-tracker`. Klicke dann auf **Return to capture**. Der neue Bericht enthält frühere Dateien mit ihren Rohdaten und neu aufgezeichnete Dateien.
+
 1. Öffne in einem neuen Chrome-Tab `chrome://downloads`.
 2. Klicke bei einer Datei aus dieser Aufzeichnung auf das Ordnersymbol. So springst du direkt zum Speicherort. Du kannst auch deinen üblichen Downloads-Ordner öffnen und dort nach `web-live-tracker` suchen.
 3. Öffne unter `web-live-tracker` zuerst `einmaleins-test`, dann den Ordner mit dem Datum deiner Aufzeichnung. Danach folgen Ordner für die Webseiten-Adressen und die einzelnen Abrufe. Neben `www.timestables.com` können dort weitere Adressen stehen, von denen die Seite Inhalte geladen hat.

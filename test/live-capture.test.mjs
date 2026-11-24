@@ -244,3 +244,33 @@ test("report download failure is shown and a new capture can start", async () =>
   assert.equal(lastStatus.report, undefined);
   assert.equal(lastStatus.active, true);
 });
+
+test("a continued capture report includes both earlier and newly saved files", async () => {
+  const date = new Date(2026, 0, 1);
+  const event = networkEvent();
+  let report;
+  const capture = createLiveCapture({
+    requestFinished: event,
+    async writeFile(path) { return path.split("/").at(-1); },
+    async writeReport(path, data) {
+      report = await data.text();
+      return { id: 1, filename: path.split("/").at(-1) };
+    },
+    readResponseContent,
+    onStatus() {},
+    now: () => date.getTime() - 1,
+  });
+  const folder = "web-live-tracker/study/2025-12-31/example.test/earlier/one";
+  capture.start("study", { unreadable: 0, records: [{
+    metadata: { timestamp: "2025-12-31T12:00:00.000Z", url: "https://example.test/earlier", method: "GET", status: 200 },
+    earlier: true,
+    indexPath: `${folder}/exchange.json`,
+    request: { status: "absent", path: null },
+    response: { status: "saved", path: `${folder}/response.txt` },
+  }] });
+  event.emit(entry("new", date));
+  await capture.stop();
+
+  assert.match(report, /2025-12-31\/example\.test\/earlier\/one\/response\.txt/);
+  assert.match(report, /2026-01-01\/example\.test\/new\/[^"]+\/response\.txt/);
+});
