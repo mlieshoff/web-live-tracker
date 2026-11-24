@@ -10,7 +10,7 @@ Web Live Tracker is a desktop browser extension for Chrome and Firefox. It captu
 | Chrome | [Chrome guide](chrome/README.md) |
 | Firefox | [Firefox guide](firefox/README.md) |
 
-Download the Chrome and Firefox ZIPs from [GitHub Releases](https://github.com/mlieshoff/web-live-tracker/releases). Each release lists the story and task titles. Both editions use the same capture code.
+Download the Chrome and Firefox ZIPs from [GitHub Releases](https://github.com/mlieshoff/web-live-tracker/releases). Each release uses the version from the merged story PR as its title and tag (for example, `v0.1.1`). The release notes list the story and task titles. Both editions use the same capture code.
 
 [Deutsch](README_DE.md)
 
