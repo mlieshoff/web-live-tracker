@@ -24,6 +24,8 @@ Nach einem Firefox-Neustart wiederholst du diese Schritte, um die Erweiterung er
 
 Der Bericht gruppiert gespeicherte Dateien nach Typ und verlinkt sie direkt. Unter **What needs attention** steht, warum Dateien fehlen oder unvollständig sind. Du findest den Bericht auch unter `web-live-tracker/<research-id>/capture-*.html`. Lass ihn in diesem Ordner, damit die Links funktionieren.
 
+Der Bericht zeigt kleine Vorschauen für unterstützte Bilder und Videos aus den gespeicherten Dateien. SVG-Dateien stehen unter **Images**. Kleine SVG-Dateien werden als nicht interaktive Bildvorschau angezeigt, während die Rohdateien ihr bisheriges Format behalten. Audiodateien und Dateien ohne Vorschau bleiben verlinkt.
+
 Identische Antwortdaten werden innerhalb einer Aufzeichnung einmal gespeichert. Jede Anfrage behält ihren eigenen Rohdatensatz und Berichtlink. Bei einer gemeinsam genutzten Antwort verweist `responseFilePath` in `exchange.json` relativ zum Research-Ordner auf die Datei. Teilantworten werden nur bei bekanntem und gleichem Bytebereich zusammengefasst.
 
 Um eine frühere Aufzeichnung zu öffnen, gib ihre **Research ID** ein und wähle **Open capture report**. Wähle bei Bedarf den passenden Ordner unter `Downloads/web-live-tracker/` oder den übergeordneten Ordner `web-live-tracker`. Der Bericht liest die Dateien direkt aus dem ausgewählten Ordner. Der Download-Verlauf spielt dabei keine Rolle. Firefox fragt bei einem erneuten Einlesen wieder nach dem Ordner.

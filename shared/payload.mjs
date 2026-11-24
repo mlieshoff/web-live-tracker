@@ -1,3 +1,4 @@
+import { createSvgPreviewReader, isSvgMediaType } from "./svg-preview.mjs";
 import { DownloadError, exportFolder, jsonFile } from "./export.mjs";
 
 const fileExtensions = new Map([
@@ -198,7 +199,15 @@ async function responseKey(file, metadata, responseFiles) {
   }
 }
 
-export async function exportPayloads(writeFile, researchId, exchanges, date, responseFiles) {
+async function svgFields(mediaType, path, file, readSvgPreview) {
+  if (!isSvgMediaType(mediaType)) return {};
+  const svgPreview = await readSvgPreview(path, file && (() => file.data));
+  return { svg: true, svgPreview };
+}
+
+export async function exportPayloads(
+  writeFile, researchId, exchanges, date, responseFiles, readSvgPreview = createSvgPreviewReader(),
+) {
   const folder = exportFolder(researchId, date);
   const batch = crypto.randomUUID().slice(0, 18);
   const result = { saved: 0, errors: [], records: [] };
@@ -238,17 +247,23 @@ export async function exportPayloads(writeFile, researchId, exchanges, date, res
       responseSource: response.source,
       responseRetryError: response.retryError,
       requestFile,
+      requestMediaType: isSvgMediaType(requestMediaType) ? requestMediaType : undefined,
       responseFile,
       responseFilePath: reusedPath?.slice(`web-live-tracker/${researchId}/`.length),
     }));
     result.records.push({
       metadata,
       indexPath: savedPath(indexFile),
-      request: { status: request.status, path: savedPath(requestFile) },
+      request: {
+        status: request.status,
+        path: savedPath(requestFile),
+        ...await svgFields(requestMediaType, savedPath(requestFile), requestBodyFile, readSvgPreview),
+      },
       response: {
         status: response.status,
         path: responsePath,
         source: response.source,
+        ...await svgFields(metadata.mediaType, responsePath, responseBodyFile, readSvgPreview),
       },
     });
   }

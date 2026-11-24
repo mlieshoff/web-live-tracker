@@ -333,3 +333,24 @@ test("exportPayloads detects recognizable binary content only when a declared ty
     indexedNames: ["response.png", "response.png", "response.pdf", "response.jpg", "response.bin", "response.bin", "response.mp4", "response.mp3"],
   });
 });
+
+test("SVG responses remain neutral raw files and carry an inline image preview for the report", async () => {
+  const svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><title>Grüße</title><rect width="10" height="10"/></svg>';
+  const files = new Map();
+  const result = await exportPayloads(async (path, blob) => {
+    files.set(path, blob);
+    return path.split("/").at(-1);
+  }, "study", [{
+    metadata: { ...metadata, mediaType: "Image/SVG+XML" },
+    request: { status: "absent" },
+    response: { status: "saved", data: svg },
+  }], new Date(2026, 0, 3));
+
+  const response = result.records[0].response;
+  assert.equal(files.size, 2);
+  assert.match(response.path, /\/response\.txt$/);
+  assert.equal(files.get(response.path).type, "text/plain;charset=utf-8");
+  assert.equal(await files.get(response.path).text(), svg);
+  assert.equal(response.svg, true);
+  assert.equal(new TextDecoder().decode(Uint8Array.from(atob(response.svgPreview), (byte) => byte.charCodeAt(0))), svg);
+});

@@ -26,6 +26,8 @@ Identical response bytes within a capture share one saved file. Every exchange k
 
 The capture report groups saved files by type and links to the files and raw records. **What needs attention** explains missing files and partial media. Reopen the report from Downloads or find `capture-*.html` in `web-live-tracker/<research-id>/`. Keep it in that folder so the file links work.
 
+The report shows small previews for supported images and videos using the capture files. SVGs are listed under **Images** and small SVGs appear as non-interactive image previews. Captured SVGs keep their original neutral export format. Audio and media without a preview remain linked.
+
 To review a previous capture, enter its **Research ID** and select **Open capture report** before or after recording. If asked, select the matching folder under `Downloads/web-live-tracker/` or pick the parent `web-live-tracker` folder. The report reads the files directly from the selected folder, so clearing download history has no effect. Firefox asks you to select the folder when a fresh read is needed.
 
 ## Build the ZIP

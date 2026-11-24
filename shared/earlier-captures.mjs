@@ -1,3 +1,4 @@
+import { isSvgMediaType } from "./svg-preview.mjs";
 import { rawRecordName } from "./capture-folder.mjs";
 import { validateResearchId } from "./export.mjs";
 import { isExportedBodyFilename } from "./payload.mjs";
@@ -62,7 +63,7 @@ export function earlierCaptureRecords(entries, researchId, currentRecords) {
   const records = [];
   let unreadable = 0;
 
-  for (const { directory, files, index } of validEntries) {
+  for (const { directory, files, index, svgPreviews } of validEntries) {
     const parts = directory.split("/");
     const folder = prefix + directory;
     if (currentFolders.has(folder)) continue;
@@ -79,6 +80,8 @@ export function earlierCaptureRecords(entries, researchId, currentRecords) {
     const reusedPath = parsed?.data.responseFilePath;
     const sharedPath = responsePaths.has(reusedPath) ? prefix + reusedPath : undefined;
     const response = archiveBody("response", parsed?.data, folder, files, sharedPath);
+    if (isSvgMediaType(parsed?.data.requestMediaType)) Object.assign(request, { svg: true, svgPreview: svgPreviews?.request });
+    if (isSvgMediaType(parsed?.data.mediaType)) Object.assign(response, { svg: true, svgPreview: svgPreviews?.response });
     if (!parsed && !request.path && !response.path) continue;
 
     records.push({

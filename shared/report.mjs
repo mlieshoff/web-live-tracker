@@ -1,5 +1,6 @@
 const groups = ["Images", "Audio and video", "Documents", "Other files"];
 const imageExtensions = new Set(["avif", "bmp", "gif", "jpg", "png", "tiff", "webp"]);
+const videoPreviewExtensions = new Set(["m4v", "mov", "mp4", "ogv", "webm"]);
 const mediaExtensions = new Set(["aac", "flac", "m4a", "m4v", "mkv", "mov", "mp3", "mp4", "mpeg", "ogg", "ogv", "ts", "wav", "webm"]);
 const documentExtensions = new Set(["csv", "json", "pdf", "tsv", "txt"]);
 
@@ -9,18 +10,46 @@ function escapeHtml(value) {
   })[character]);
 }
 
-function fileLink(path, label) {
+function fileHref(path) {
   // Reports live in the research folder. Skip the download and research folder names.
   const href = path.split("/").slice(2).map(encodeURIComponent).join("/");
-  return `<a href="./${escapeHtml(href)}">${escapeHtml(label)}</a>`;
+  return `./${escapeHtml(href)}`;
 }
 
-function fileGroup(path) {
-  const extension = path.split(".").at(-1).toLowerCase();
-  if (imageExtensions.has(extension)) return "Images";
+function fileLink(path, label, preview = "") {
+  const className = preview ? ' class="preview-link"' : "";
+  return `<a${className} href="${fileHref(path)}">${preview}${escapeHtml(label)}</a>`;
+}
+
+function fileExtension(file) {
+  return file.path.split(".").at(-1).toLowerCase();
+}
+
+function fileGroup(file) {
+  const extension = fileExtension(file);
+  if (file.svg || imageExtensions.has(extension)) return "Images";
   if (mediaExtensions.has(extension)) return "Audio and video";
   if (documentExtensions.has(extension)) return "Documents";
   return "Other files";
+}
+
+function mediaPreview(file, partial) {
+  if (file.svg) {
+    // SVG is loaded as a non-interactive image, never as markup or a linked document.
+    return file.svgPreview
+      ? `<img class="thumbnail" src="data:image/svg+xml;base64,${escapeHtml(file.svgPreview)}" alt="" loading="lazy" decoding="async">`
+      : "";
+  }
+
+  const extension = fileExtension(file);
+  const href = fileHref(file.path);
+  if (imageExtensions.has(extension) && extension !== "tiff") {
+    return `<img class="thumbnail" src="${href}" alt="" loading="lazy" decoding="async">`;
+  }
+  if (!partial && videoPreviewExtensions.has(extension)) {
+    return `<video class="thumbnail" src="${href}" muted playsinline preload="metadata" loading="lazy" aria-hidden="true"></video>`;
+  }
+  return "";
 }
 
 function fileDescription(file, direction) {
@@ -46,6 +75,7 @@ export function captureReport({ researchId, startedAt, records, unreadable = 0, 
   }
   const exchanges = [];
   const sites = new Set();
+  const previewed = new Set();
   let saved = 0;
 
   for (const [index, record] of records.entries()) {
@@ -71,8 +101,10 @@ export function captureReport({ researchId, startedAt, records, unreadable = 0, 
           const badges = direction === "response" && partial ? " · Partial file" : "";
           const caption = `${name} (${label.toLowerCase()})`;
           const earlierLabel = earlier ? " · Earlier capture" : "";
-          groupedFiles.get(fileGroup(file.path)).push(
-            `<li>${fileLink(file.path, caption)}${badges}${earlierLabel} · ${details}</li>`,
+          const preview = previewed.has(file.path) ? "" : mediaPreview(file, direction === "response" && partial);
+          if (preview) previewed.add(file.path);
+          groupedFiles.get(fileGroup(file)).push(
+            `<li>${fileLink(file.path, caption, preview)}${badges}${earlierLabel} · ${details}</li>`,
           );
           saved += 1;
         } else if (file.status !== "absent") {
@@ -112,7 +144,7 @@ export function captureReport({ researchId, startedAt, records, unreadable = 0, 
 <html lang="en">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src file: data:; media-src file:; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'">
 <title>${escapeHtml(researchId)} · Capture report</title>
 <style>
   :root { color-scheme: light dark; font: 16px/1.55 system-ui, sans-serif; }
@@ -121,6 +153,18 @@ export function captureReport({ researchId, startedAt, records, unreadable = 0, 
   section { border-top: 1px solid GrayText; margin-top: 2rem; }
   li, details { margin-block: .55rem; }
   summary { cursor: pointer; }
+  .preview-link { display: inline-block; max-width: 100%; }
+  .thumbnail {
+    display: block;
+    width: 7rem;
+    height: 4.5rem;
+    margin-block: .3rem;
+    border: 1px solid GrayText;
+    border-radius: .35rem;
+    background: #fff;
+    object-fit: contain;
+    pointer-events: none;
+  }
   :target { outline: 2px solid currentColor; outline-offset: .25rem; }
 </style>
 <main>

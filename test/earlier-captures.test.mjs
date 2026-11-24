@@ -116,3 +116,41 @@ test("a shared response reference requires an eligible file in the same research
     assert.deepEqual(record.response, { status: "missing-from-folder", path: null });
   }
 });
+
+test("rebuilt reports show neutral SVG captures under Images, including a shared response", async () => {
+  const svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><circle cx="5" cy="5" r="4"/></svg>';
+  const first = `study/${directory}`;
+  const second = first.replace("01234567-abcd-4567-1", "01234567-abcd-4567-2");
+  const metadata = { ...JSON.parse(index), status: 200, mediaType: "image/svg+xml; charset=utf-8", responseFile: "response.txt" };
+  const entries = await readSelectedCaptureFiles([
+    selected(`${first}/exchange.json`, JSON.stringify(metadata)),
+    selected(`${first}/response.txt`, svg),
+    selected(`${second}/exchange.json`, JSON.stringify({
+      ...metadata, responseFile: null, responseFilePath: `${directory}/response.txt`,
+    })),
+  ], "study");
+  const { records } = earlierCaptureRecords(entries, "study", []);
+  const html = await captureReport({ researchId: "study", startedAt: date, records }).text();
+
+  assert.equal(records.length, 2);
+  assert.equal(records[0].response.path, records[1].response.path);
+  assert.match(html, /<h3>Images<\/h3>.*href="[^"]+response\.txt"><img class="thumbnail" src="data:image\/svg\+xml;base64,/);
+  assert.equal((html.match(/data:image\/svg\+xml;base64,/g) ?? []).length, 1);
+  assert.doesNotMatch(html, /<svg|<object|<embed|<iframe|<h3>Documents/);
+});
+
+test("an SVG too large for an inline preview still belongs to Images and keeps its raw link", async () => {
+  const folder = `study/${directory}`;
+  const entries = await readSelectedCaptureFiles([
+    selected(`${folder}/exchange.json`, JSON.stringify({
+      ...JSON.parse(index), mediaType: "image/svg+xml", responseFile: "response.txt",
+    })),
+    selected(`${folder}/response.txt`, " ".repeat(65 * 1024)),
+  ], "study");
+  const html = await captureReport({
+    researchId: "study", startedAt: date, ...earlierCaptureRecords(entries, "study", []),
+  }).text();
+
+  assert.match(html, /<h3>Images<\/h3>.*href="[^"]+response\.txt"/);
+  assert.doesNotMatch(html, /src="data:image\/svg/);
+});

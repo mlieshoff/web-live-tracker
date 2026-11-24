@@ -1,3 +1,4 @@
+import { createSvgPreviewReader, isSvgMediaType } from "./svg-preview.mjs";
 import { validateResearchId } from "./export.mjs";
 import { isExportedBodyFilename } from "./payload.mjs";
 
@@ -14,7 +15,7 @@ function captureFilename(name) {
   return rawRecordName.test(name) || isExportedBodyFilename(name, "request") || isExportedBodyFilename(name, "response");
 }
 
-async function readExchange(directory, files) {
+async function readExchange(directory, files, exchanges, readSvgPreview) {
   const names = [...files.keys()].sort();
   const indexName = names.find((name) => rawRecordName.test(name));
   let index;
@@ -26,7 +27,39 @@ async function readExchange(directory, files) {
       // Keep the saved payloads when the raw record cannot be opened.
     }
   }
-  return { directory, files: names, index };
+  const entry = { directory, files: names, index };
+  if (!index) return entry;
+
+  let metadata;
+  try {
+    metadata = JSON.parse(index.text);
+  } catch {
+    return entry;
+  }
+
+  const previews = {};
+  for (const [kind, type] of [["request", metadata?.requestMediaType], ["response", metadata?.mediaType]]) {
+    if (!isSvgMediaType(type)) continue;
+    const ownName = metadata[`${kind}File`];
+    const shared = kind === "response" ? metadata.responseFilePath : undefined;
+    const parts = typeof shared === "string" ? shared.split("/") : [];
+    const name = parts.length ? parts.at(-1) : ownName;
+    const folder = parts.length ? parts.slice(0, -1).join("/") : directory;
+    if (!isExportedBodyFilename(name, kind)) continue;
+
+    const preview = await readSvgPreview(`${folder}/${name}`, exchanges.get(folder)?.get(name));
+    if (preview) previews[kind] = preview;
+  }
+  return { ...entry, svgPreviews: previews };
+}
+
+async function readExchanges(exchanges) {
+  const entries = [];
+  const readSvgPreview = createSvgPreviewReader();
+  for (const [directory, files] of exchanges) {
+    entries.push(await readExchange(directory, files, exchanges, readSvgPreview));
+  }
+  return entries;
 }
 
 export async function readSelectedCaptureFiles(files, researchId) {
@@ -55,9 +88,7 @@ export async function readSelectedCaptureFiles(files, researchId) {
     exchanges.get(directory).set(name, () => file);
   }
 
-  const entries = [];
-  for (const [directory, exchange] of exchanges) entries.push(await readExchange(directory, exchange));
-  return entries;
+  return readExchanges(exchanges);
 }
 
 async function childDirectory(handle, name) {
@@ -80,7 +111,7 @@ export async function readCaptureDirectory(handle, researchId) {
     throw new Error(`Choose Downloads/web-live-tracker/${researchId} or its web-live-tracker folder.`);
   }
 
-  const entries = [];
+  const exchanges = new Map();
   async function walk(directory, path) {
     const files = new Map();
     for await (const entry of directory.values()) {
@@ -93,10 +124,10 @@ export async function readCaptureDirectory(handle, researchId) {
         files.set(entry.name, () => entry.getFile());
       }
     }
-    if (files.size) entries.push(await readExchange(path.join("/"), files));
+    if (files.size) exchanges.set(path.join("/"), files);
   }
   await walk(handle, []);
-  return entries;
+  return readExchanges(exchanges);
 }
 
 function directoryDatabase() {
