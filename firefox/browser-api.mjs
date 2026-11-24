@@ -32,3 +32,9 @@ export function openCaptureReport(id) {
     if (!opened) throw new Error("Could not open the report page.");
   });
 }
+
+export async function findEarlierDownloads(researchId) {
+  const items = await globalThis.browser.runtime.sendMessage({ action: "findEarlierDownloads", researchId });
+  if (!Array.isArray(items)) throw new Error("Firefox could not read earlier downloads.");
+  return items;
+}

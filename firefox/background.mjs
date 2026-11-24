@@ -1,3 +1,4 @@
+import { searchCaptureDownloads } from "../shared/earlier-captures.mjs";
 import { DownloadError, downloadWithDetails } from "../shared/export.mjs";
 
 browser.runtime.onMessage.addListener((message, sender) => {
@@ -6,6 +7,9 @@ browser.runtime.onMessage.addListener((message, sender) => {
     return undefined;
   }
 
+  if (message?.action === "findEarlierDownloads") {
+    return searchCaptureDownloads(browser.downloads, message.researchId);
+  }
   if (message?.action === "showCaptureReport" && Number.isSafeInteger(message.id)) {
     const url = browser.runtime.getURL(`browser/report-open.html?id=${message.id}`);
     return browser.tabs.create({ url }).then(() => true);

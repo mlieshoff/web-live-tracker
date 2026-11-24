@@ -1,3 +1,4 @@
+import { searchCaptureDownloads } from "../shared/earlier-captures.mjs";
 import { downloadFile, downloadWithDetails } from "../shared/export.mjs";
 
 export const requestFinished = globalThis.chrome?.devtools?.network?.onRequestFinished;
@@ -21,4 +22,8 @@ export function saveCaptureReport(filename, data) {
 
 export function openCaptureReport(id) {
   return globalThis.chrome.downloads.open(id);
+}
+
+export function findEarlierDownloads(researchId) {
+  return searchCaptureDownloads(globalThis.chrome.downloads, researchId);
 }

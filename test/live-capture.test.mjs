@@ -245,13 +245,30 @@ test("report download failure is shown and a new capture can start", async () =>
   assert.equal(lastStatus.active, true);
 });
 
-test("a continued capture report includes both earlier and newly saved files", async () => {
+test("a continued report automatically includes earlier Downloads and newly saved files", async () => {
   const date = new Date(2026, 0, 1);
   const event = networkEvent();
   let report;
+  const currentItems = [];
+  const folder = "web-live-tracker/study/2025-12-31/example.test/earlier/01234567-abcd-4567-1";
   const capture = createLiveCapture({
     requestFinished: event,
-    async writeFile(path) { return path.split("/").at(-1); },
+    async writeFile(path) {
+      currentItems.push({
+        filename: `/Downloads/${path}`, startTime: date.toISOString(), state: "complete", exists: true,
+      });
+      return path.split("/").at(-1);
+    },
+    async findEarlierDownloads(id) {
+      assert.equal(id, "study");
+      const earlierItems = ["response.txt", "exchange.json"].map((name) => ({
+        filename: `/Downloads/${folder}/${name}`,
+        startTime: new Date(2025, 11, 31, 12).toISOString(),
+        state: "complete",
+        exists: true,
+      }));
+      return [...currentItems, ...earlierItems];
+    },
     async writeReport(path, data) {
       report = await data.text();
       return { id: 1, filename: path.split("/").at(-1) };
@@ -260,17 +277,29 @@ test("a continued capture report includes both earlier and newly saved files", a
     onStatus() {},
     now: () => date.getTime() - 1,
   });
-  const folder = "web-live-tracker/study/2025-12-31/example.test/earlier/one";
-  capture.start("study", { unreadable: 0, records: [{
-    metadata: { timestamp: "2025-12-31T12:00:00.000Z", url: "https://example.test/earlier", method: "GET", status: 200 },
-    earlier: true,
-    indexPath: `${folder}/exchange.json`,
-    request: { status: "absent", path: null },
-    response: { status: "saved", path: `${folder}/response.txt` },
-  }] });
+  capture.start("study");
   event.emit(entry("new", date));
   await capture.stop();
 
-  assert.match(report, /2025-12-31\/example\.test\/earlier\/one\/response\.txt/);
-  assert.match(report, /2026-01-01\/example\.test\/new\/[^"]+\/response\.txt/);
+  assert.match(report, /2025-12-31\/example.test\/earlier\/[^"]+\/response.txt/);
+  assert.match(report, /2026-01-01\/example.test\/new\/[^"]+\/response.txt/);
+});
+
+test("a download history error still produces a report for the current capture", async () => {
+  const event = networkEvent();
+  let report;
+  const capture = createLiveCapture({
+    requestFinished: event,
+    async findEarlierDownloads() { throw new Error("History unavailable"); },
+    async writeReport(path, data) {
+      report = await data.text();
+      return { id: 1, filename: path.split("/").at(-1) };
+    },
+    onStatus() {},
+  });
+
+  capture.start("study");
+  await capture.stop();
+
+  assert.match(report, /Downloads history could not be read/);
 });

@@ -1,71 +1,94 @@
 import { validateResearchId } from "./export.mjs";
 import { isExportedBodyFilename } from "./payload.mjs";
 
+const dateFolder = /^\d{4}-\d{2}-\d{2}$/;
+const exchangeFolder = /^[\da-f]{8}-[\da-f]{4}-[\da-f]{4}-[1-9]\d*$/i;
 const indexName = /^exchange(?: ?\(\d+\))?\.json$/i;
-const captureDate = /^\d{4}-\d{2}-\d{2}$/;
-const bodyStates = new Set(["absent", "unavailable", "saved", "download-failed"]);
 
-function archiveBody(direction, data, folder, files) {
-  const status = data[`${direction}Body`];
-  if (!bodyStates.has(status)) throw new Error("Unrecognized body status.");
+export function searchCaptureDownloads(downloads, researchId) {
+  validateResearchId(researchId);
+  const separator = String.raw`[/\\]`;
+  return downloads.search({
+    filenameRegex: `${separator}web-live-tracker${separator}${researchId}${separator}`,
+    state: "complete",
+    exists: true,
+    orderBy: ["-startTime"],
+  });
+}
 
-  const name = data[`${direction}File`];
-  const path = status === "saved" && isExportedBodyFilename(name, direction) ? `${folder}/${name}` : null;
+function captureDownload(item, researchId) {
+  if (item.exists === false || item.state !== "complete" || typeof item.filename !== "string") return null;
+  const filename = item.filename.replaceAll("\\", "/");
+  const marker = `/web-live-tracker/${researchId}/`;
+  const offset = filename.lastIndexOf(marker);
+  if (offset < 0) return null;
+
+  const path = filename.slice(offset + 1);
+  const parts = filename.slice(offset + marker.length).split("/");
+  if (parts.length < 5 || !dateFolder.test(parts[0]) || !exchangeFolder.test(parts.at(-2)) ||
+      parts.some((part) => !part || part === "." || part === "..")) return null;
+
+  const name = parts.at(-1);
+  const kind = indexName.test(name) ? "index"
+    : isExportedBodyFilename(name, "request") ? "request"
+    : isExportedBodyFilename(name, "response") ? "response" : null;
+  const timestamp = Date.parse(item.startTime);
+  if (!kind || !Number.isFinite(timestamp)) return null;
 
   return {
-    status: status === "saved" && !path ? "invalid-file-name"
-      : path && !files.has(path) ? "missing-from-folder"
-      : status === "download-failed" ? "saved" : status,
-    path: path && files.has(path) ? `web-live-tracker/${path}` : null,
-    source: direction === "response" ? data.responseSource : undefined,
+    root: filename.slice(0, offset),
+    path,
+    directory: path.slice(0, path.lastIndexOf("/")),
+    timestamp,
+    kind,
+    host: parts[1],
+    name: parts.at(-3),
   };
 }
 
-export async function loadEarlierCaptures(selectedFiles, researchId) {
-  validateResearchId(researchId);
-  const files = new Map();
-  for (const file of selectedFiles) {
-    const parts = file.webkitRelativePath.split("/");
-    if (parts[0] !== researchId) {
-      throw new Error(`Choose the folder named "${researchId}" in web-live-tracker.`);
-    }
-    if (parts.length >= 6 && captureDate.test(parts[1]) &&
-        parts.every((part) => part && part !== "." && part !== ".." && !part.includes("\\"))) {
-      files.set(file.webkitRelativePath, file);
-    }
+function decodeComponent(part) {
+  if (part === "!root!" || part === "!empty!") return "";
+  return part.replace(/^!reserved!/, "").replace(/!([\da-f]{1,4})!/gi, (_, code) =>
+    String.fromCharCode(Number.parseInt(code, 16))
+  );
+}
+
+export function earlierCaptureRecords(items, researchId, startedAt, currentRecords) {
+  const downloads = items.map((item) => captureDownload(item, researchId)).filter(Boolean);
+  const currentPaths = new Set(currentRecords.flatMap(({ indexPath, request, response }) =>
+    [indexPath, request?.path, response?.path].filter(Boolean)
+  ));
+  const earlier = downloads.filter(({ timestamp, path }) =>
+    timestamp < startedAt.getTime() && !currentPaths.has(path)
+  );
+  const currentRoots = new Set(downloads.filter(({ path }) => currentPaths.has(path)).map(({ root }) => root));
+  if (currentRoots.size !== 1) {
+    return { records: [], locationUnconfirmed: earlier.length > 0 };
   }
 
-  const records = [];
-  let unreadable = 0;
-  for (const [path, file] of files) {
-    if (!indexName.test(path.split("/").at(-1))) continue;
-    try {
-      if (file.size > 1024 * 1024) throw new Error("Record too large.");
-      const data = JSON.parse(await file.text());
-      const url = new URL(data.url);
-      if ((url.protocol !== "http:" && url.protocol !== "https:") ||
-          !Number.isFinite(Date.parse(data.timestamp)) || typeof data.method !== "string" ||
-          !Number.isInteger(data.status)) {
-        throw new Error("Invalid capture metadata.");
-      }
-
-      const folder = path.slice(0, path.lastIndexOf("/"));
-      records.push({
-        metadata: { url: url.origin + url.pathname, method: data.method, timestamp: data.timestamp, status: data.status },
-        indexPath: `web-live-tracker/${path}`,
-        request: archiveBody("request", data, folder, files),
-        response: archiveBody("response", data, folder, files),
+  const [root] = currentRoots;
+  const records = new Map();
+  for (const file of earlier) {
+    if (file.root !== root) continue;
+    let record = records.get(file.directory);
+    if (!record) {
+      record = {
         earlier: true,
-      });
-    } catch {
-      unreadable += 1;
+        host: decodeComponent(file.host),
+        name: decodeComponent(file.name),
+        downloadedAt: file.timestamp,
+        indexPath: null,
+        request: { status: "unknown", path: null },
+        response: { status: "unknown", path: null },
+      };
+      records.set(file.directory, record);
     }
+    if (file.kind === "index") record.indexPath ??= file.path;
+    else if (!record[file.kind].path) record[file.kind] = { status: "saved", path: file.path };
   }
 
-  if (records.length === 0 && unreadable === 0) {
-    throw new Error("This folder contains no earlier capture records.");
-  }
-
-  records.sort((first, second) => Date.parse(first.metadata.timestamp) - Date.parse(second.metadata.timestamp));
-  return { records, unreadable };
+  return {
+    records: [...records.values()].sort((a, b) => a.downloadedAt - b.downloadedAt),
+    locationUnconfirmed: false,
+  };
 }

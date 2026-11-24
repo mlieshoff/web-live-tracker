@@ -1,69 +1,81 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { loadEarlierCaptures } from "../shared/earlier-captures.mjs";
+import { earlierCaptureRecords, searchCaptureDownloads } from "../shared/earlier-captures.mjs";
+import { exportPayloads } from "../shared/payload.mjs";
 import { captureReport } from "../shared/report.mjs";
 
-const root = "study/2026-06-01/example.test/image/one";
-const oldRecord = {
-  timestamp: "2026-06-01T10:00:00.000Z",
-  url: "https://example.test/image",
-  method: "GET",
-  status: 206,
-  requestBody: "absent",
-  requestFile: null,
-  responseBody: "saved",
-  responseFile: "response (1).png",
-};
+const folder = "web-live-tracker/study/2026-06-01/example.test!3a!80/photo/01234567-abcd-4567-1";
+const start = new Date("2026-06-02T12:00:00Z");
 
-function file(path, content = "") {
-  return { webkitRelativePath: path, size: content.length, text: async () => content };
+function item(filename, overrides = {}) {
+  return { filename, startTime: "2026-06-01T12:00:00Z", state: "complete", exists: true, ...overrides };
 }
 
-test("earlier raw records retain their metadata and link to the actual conflict-renamed payload", async () => {
-  const earlier = await loadEarlierCaptures([
-    file(`${root}/exchange.json`, JSON.stringify(oldRecord)),
-    file(`${root}/response (1).png`),
-    file("study/capture-old.html"),
-  ], "study");
-  const result = captureReport({ researchId: "study", startedAt: new Date(), ...earlier });
-  const html = await result.text();
-
-  assert.match(html, /href="\.\/2026-06-01\/example\.test\/image\/one\/response%20\(1\)\.png"/);
-  assert.match(html, /href="[^"]*exchange\.json"/);
-  assert.match(html, /Earlier capture/);
-  assert.match(html, /Partial file/);
-  assert.match(html, /2026-06-01T10:00:00\.000Z/);
+test("Downloads search is scoped to the requested research folder on Unix and Windows", async () => {
+  await searchCaptureDownloads({
+    search(query) {
+      const pattern = new RegExp(query.filenameRegex);
+      assert.match(`/home/example/Downloads/${folder}/exchange.json`, pattern);
+      assert.match(`C:/Downloads/${folder}/exchange.json`.replaceAll("/", "\\"), pattern);
+      assert.doesNotMatch(`/home/example/Downloads/${folder.replace("/study/", "/study-extra/")}/exchange.json`, pattern);
+      assert.deepEqual([query.state, query.exists], ["complete", true]);
+    },
+  }, "study");
 });
 
-test("earlier imports explain deleted payloads and skip unreadable records", async () => {
-  const earlier = await loadEarlierCaptures([
-    file(`${root}/exchange.json`, JSON.stringify(oldRecord)),
-    file(`${root}/exchange (1).json`, "broken"),
-    file(`${root}/../bad/exchange.json`, JSON.stringify(oldRecord)),
-  ], "study");
+test("earlier browser downloads are grouped by exchange and linked using their existing names", async () => {
+  const base = `C:/Downloads/${folder}`;
+  const candidates = [
+    item(`${base}/exchange(1).json`),
+    item(`${base}/response (1).png`),
+    item(`${base}/response.html`),
+    item(`${base}/request.txt`, { exists: false }),
+    item(`${base}/request (1).txt`, { state: "interrupted" }),
+    item(`C:/Downloads/${folder.replace("/study/", "/other/")}/response.txt`),
+    item(`${base.replace("/photo/", "/../")}/response.txt`),
+  ].map((download) => ({ ...download, filename: download.filename.replaceAll("/", "\\") }));
+  const currentPath = `${folder.replace("2026-06-01", "2026-06-02")}/response.txt`;
+  candidates.push(item(`C:/Downloads/${currentPath}`, { startTime: "2026-06-02T12:01:00Z" }));
+  const { records } = earlierCaptureRecords(candidates, "study", start, [{ response: { path: currentPath } }]);
+  const html = await captureReport({ researchId: "study", startedAt: start, records }).text();
 
-  const html = await captureReport({ researchId: "study", startedAt: new Date(), ...earlier }).text();
-  assert.equal(earlier.records.length, 1);
-  assert.match(html, /1 earlier record could not be read/);
-  assert.match(html, /was saved earlier but is missing from the selected folder/);
-  assert.doesNotMatch(html, /href="[^"]*response/);
+  assert.equal(records.length, 1);
+  assert.match(html, /response%20\(1\)\.png/);
+  assert.match(html, /exchange\(1\)\.json/);
+  assert.match(html, /photo · example\.test:80/);
+  assert.match(html, /Earlier download/);
+  assert.doesNotMatch(html, /\/Downloads\/|response\.html|request\.txt|Status undefined|could not provide/);
 });
 
-test("earlier imports reject a different research folder and a folder without capture records", async () => {
-  await assert.rejects(loadEarlierCaptures([file(`${root}/exchange.json`)], "other"), /Choose the folder named "other"/);
-  await assert.rejects(loadEarlierCaptures([file("study/README.md")], "study"), /no earlier capture records/);
+test("earlier download paths must match the current Downloads root and predate the capture", () => {
+  const currentPath = `${folder.replace("2026-06-01", "2026-06-02")}/response.txt`;
+  const currentRecords = [{ response: { path: currentPath } }];
+  const items = [
+    item(`/Downloads/${currentPath}`, { startTime: "2026-06-02T12:01:00Z" }),
+    item(`/Downloads/${folder}/response.png`),
+    item(`/otherDownloads/${folder.replace("/photo/", "/other-photo/")}/response.png`),
+    item(`/Downloads/${folder.replace("/photo/", "/other-capture/")}/response.png`, { startTime: "2026-06-02T12:05:00Z" }),
+  ];
+  assert.deepEqual(earlierCaptureRecords(items, "study", start, currentRecords).records.map(({ response }) => response.path),
+    [`${folder}/response.png`]);
+  assert.deepEqual(earlierCaptureRecords(items, "study", start, []),
+    { records: [], locationUnconfirmed: true });
 });
 
-test("earlier imports leave active files unlinked when a raw record points to them", async () => {
-  const earlier = await loadEarlierCaptures([
-    file(`${root}/exchange.json`, JSON.stringify({
-      ...oldRecord, responseFile: "response.html", requestBody: "saved", requestFile: "request.svg",
-    })),
-    file(`${root}/response.html`, "<script></script>"),
-    file(`${root}/request.svg`),
-  ], "study");
+test("automatic lookup recognizes the paths produced by the raw exporter", async () => {
+  const items = [];
+  await exportPayloads(async (path) => {
+    items.push(item(`/Downloads/${path}`));
+    return path.split("/").at(-1);
+  }, "study", [{
+    metadata: { url: "https://example.test/archive.txt", mediaType: "text/plain" },
+    request: { status: "absent" },
+    response: { status: "saved", data: "Saved payload" },
+  }], new Date(2026, 5, 1, 12));
 
-  const html = await captureReport({ researchId: "study", startedAt: new Date(), ...earlier }).text();
-  assert.match(html, /the tracker can’t link/);
-  assert.doesNotMatch(html, /href="[^"]*(response\.html|request\.svg)/);
+  const currentPath = `${folder}/request.json`;
+  items.push(item(`/Downloads/${currentPath}`, { startTime: "2026-06-02T12:01:00Z" }));
+  const { records: [record] } = earlierCaptureRecords(items, "study", start, [{ request: { path: currentPath } }]);
+  assert.match(record.indexPath, /\/exchange\.json$/);
+  assert.match(record.response.path, /\/response\.txt$/);
 });

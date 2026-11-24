@@ -296,21 +296,3 @@ dd {
     justify-content: space-between;
   }
 }
-
-.earlier-captures {
-  margin-block-start: 0.8rem;
-}
-
-.earlier-captures summary {
-  cursor: pointer;
-}
-
-.earlier-captures a:not([hidden]) {
-  display: inline-block;
-  margin-block-start: 0.45rem;
-  color: var(--accent);
-}
-
-#earlier-result:empty {
-  display: none;
-}

@@ -1,3 +1,4 @@
+import { earlierCaptureRecords } from "./earlier-captures.mjs";
 import { createCapture } from "./capture.mjs";
 import { DownloadError, exportFolder, validateResearchId } from "./export.mjs";
 import { prepareMediaRetry, retryUnavailableMedia } from "./media-retry.mjs";
@@ -6,12 +7,11 @@ import { captureReport } from "./report.mjs";
 
 const errorHistoryLimit = 30;
 
-export function createLiveCapture({ requestFinished, writeFile, writeReport, readResponseContent, onStatus, now = Date.now }) {
+export function createLiveCapture({ requestFinished, writeFile, writeReport, findEarlierDownloads, readResponseContent, onStatus, now = Date.now }) {
   let researchId;
   let active = false;
   let startedAt;
   let records;
-  let unreadable;
   let report;
   let queue = Promise.resolve();
   let captured = 0;
@@ -67,15 +67,14 @@ export function createLiveCapture({ requestFinished, writeFile, writeReport, rea
   }, () => startedAt.getTime());
 
   return {
-    start(id, earlier = { records: [], unreadable: 0 }) {
+    start(id) {
       if (active || pending > 0 || report?.state === "saving") {
         return;
       }
       validateResearchId(id);
       researchId = id;
       startedAt = new Date(now());
-      records = [...earlier.records];
-      unreadable = earlier.unreadable;
+      records = [];
       report = undefined;
       captured = 0;
       saved = 0;
@@ -96,7 +95,20 @@ export function createLiveCapture({ requestFinished, writeFile, writeReport, rea
             try {
               const folder = exportFolder(researchId, startedAt).split("/").slice(0, -1).join("/");
               const stamp = startedAt.toISOString().replace(/[:.]/g, "-");
-              const file = captureReport({ researchId, startedAt, records, unreadable });
+              let earlier = { records: [], locationUnconfirmed: false };
+              let historyUnavailable = false;
+              if (findEarlierDownloads) {
+                try {
+                  const items = await findEarlierDownloads(researchId);
+                  earlier = earlierCaptureRecords(items, researchId, startedAt, records);
+                } catch {
+                  historyUnavailable = true;
+                }
+              }
+              const file = captureReport({
+                researchId, startedAt, records: [...earlier.records, ...records], historyUnavailable,
+                locationUnconfirmed: earlier.locationUnconfirmed,
+              });
               const result = await writeReport(`${folder}/capture-${stamp}.html`, file);
               report = { state: "ready", ...result };
             } catch (error) {

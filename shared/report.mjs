@@ -28,17 +28,18 @@ function fileDescription(file, direction) {
   if (file.status === "absent") {
     return direction === "response" ? "The website did not send a file." : "The browser did not send a file.";
   }
-  if (file.status === "invalid-file-name") return "The earlier record points to a file the tracker can’t link.";
-  if (file.status === "missing-from-folder") return "This file was saved earlier but is missing from the selected folder.";
   if (file.status === "saved") return "The browser provided the file, but it could not be saved.";
   return "The browser could not provide this file.";
 }
 
-export function captureReport({ researchId, startedAt, records, unreadable = 0 }) {
+export function captureReport({ researchId, startedAt, records, historyUnavailable = false, locationUnconfirmed = false }) {
   const groupedFiles = new Map(groups.map((group) => [group, []]));
   const issues = [];
-  if (unreadable > 0) {
-    issues.push(`<li>${unreadable} earlier ${unreadable === 1 ? "record could" : "records could"} not be read.</li>`);
+  if (historyUnavailable) {
+    issues.push("<li>The browser’s Downloads history could not be read. Earlier files may still be in Downloads.</li>");
+  }
+  if (locationUnconfirmed) {
+    issues.push("<li>Earlier downloads were found, but this capture did not confirm their location. Look in your research folder in Downloads.</li>");
   }
   const exchanges = [];
   const sites = new Set();
@@ -46,17 +47,20 @@ export function captureReport({ researchId, startedAt, records, unreadable = 0 }
 
   for (const [index, record] of records.entries()) {
     const { metadata, request, response, indexPath, error, earlier } = record;
-    const url = new URL(metadata.url);
-    sites.add(url.host);
-    const name = url.pathname === "/" ? url.host : `${url.pathname.split("/").filter(Boolean).at(-1)} · ${url.host}`;
+    const url = metadata ? new URL(metadata.url) : null;
+    const host = url?.host ?? record.host;
+    const resource = url ? url.pathname.split("/").filter(Boolean).at(-1) : record.name;
+    sites.add(host);
+    const name = resource ? `${resource} · ${host}` : host;
     const details = `<a href="#exchange-${index + 1}">Capture details</a>`;
-    const partial = metadata.status === 206 && response?.source !== "refetched";
+    const partial = metadata?.status === 206 && response?.source !== "refetched";
     const notes = [];
 
     if (error) {
       issues.push(`<li>${escapeHtml(name)}. ${escapeHtml(error)} ${details}</li>`);
     } else {
       for (const [direction, file] of [["request", request], ["response", response]]) {
+        if (file.status === "unknown") continue;
         const description = fileDescription(file, direction);
         const label = direction === "response" ? "Received" : "Sent";
         notes.push(`<li>${label} — ${description}</li>`);
@@ -78,15 +82,18 @@ export function captureReport({ researchId, startedAt, records, unreadable = 0 }
       if (response.source === "refetched") {
         notes.push("<li>The file was retrieved in a separate download.</li>");
       }
-      if (!indexPath) {
+      if (!indexPath && !earlier) {
         issues.push(`<li>${escapeHtml(name)}. The technical record could not be saved. ${details}</li>`);
       }
     }
 
     const raw = indexPath ? fileLink(indexPath, "Open raw record (JSON)") : "";
+    const time = earlier ? new Date(record.downloadedAt).toLocaleString() : metadata.timestamp;
+    const technicalDetails = earlier ? "Found in this browser’s Downloads history."
+      : `${escapeHtml(metadata.method)} ${escapeHtml(metadata.url)} · Status ${escapeHtml(metadata.status)}`;
     exchanges.push(`<details>
-      <summary>${escapeHtml(name)} · ${escapeHtml(metadata.timestamp)}${earlier ? " · Earlier capture" : ""}</summary>
-      <p id="exchange-${index + 1}">${escapeHtml(metadata.method)} ${escapeHtml(metadata.url)} · Status ${escapeHtml(metadata.status)}</p>
+      <summary>${escapeHtml(name)} · ${escapeHtml(time)}${earlier ? " · Earlier download" : ""}</summary>
+      <p id="exchange-${index + 1}">${technicalDetails}</p>
       ${error ? `<p>${escapeHtml(error)}</p>` : `<ul>${notes.join("")}</ul>`}
       ${raw}
     </details>`);
@@ -115,7 +122,8 @@ export function captureReport({ researchId, startedAt, records, unreadable = 0 }
 <main>
   <h1>${escapeHtml(researchId)} · Capture report</h1>
   <p>Started ${escapeHtml(startedAt.toLocaleString())} · ${saved} ${saved === 1 ? "file" : "files"} saved</p>
-  ${records.some((record) => record.earlier) ? "<p>Includes earlier captures from the selected research folder.</p>" : ""}
+  <p>Downloads/web-live-tracker/${escapeHtml(researchId)}/</p>
+  ${records.some((record) => record.earlier) ? "<p>Includes earlier files found in this browser’s Downloads history. Open their raw records for capture details.</p>" : ""}
   ${sites.size ? `<p>Websites recorded · ${escapeHtml([...sites].join(", "))}</p>` : ""}
   <nav aria-label="Report sections">
     <a href="#files">Saved files</a><a href="#issues">What needs attention</a><a href="#details">Technical details</a>

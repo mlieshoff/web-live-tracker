@@ -24,7 +24,7 @@ Nach einem Firefox-Neustart wiederholst du diese Schritte, um die Erweiterung er
 
 Der Bericht gruppiert gespeicherte Dateien nach Typ und verlinkt sie direkt. Unter **What needs attention** steht, warum Dateien fehlen oder unvollständig sind. Du findest den Bericht auch unter `web-live-tracker/<research-id>/capture-*.html`. Lass ihn in diesem Ordner, damit die Links funktionieren.
 
-Wenn du unter derselben Research ID weiter aufzeichnest, öffne vor **Start capture** den Abschnitt **Include earlier captures**. Klicke auf **Choose research folder**. Wähle im neuen Tab den Ordner für diese Research ID im Download-Unterordner `web-live-tracker`. Klicke dann auf **Return to capture**. Der neue Bericht enthält frühere Dateien mit ihren Rohdaten und neu aufgezeichnete Dateien.
+Verwende dieselbe **Research ID**, um eine Aufzeichnung fortzusetzen. Sobald die Aufzeichnung eine neue Datei speichert, verlinkt der Bericht frühere Dateien automatisch, wenn sie im Download-Verlauf dieses Browsers unter `Downloads/web-live-tracker/<research-id>/` zu finden sind. Die Rohdaten enthalten die Details früherer Aufzeichnungen. Wenn der Download-Verlauf gelöscht wurde, findest du die Dateien weiterhin in diesem Ordner.
 
 Öffne die Firefox-Downloadliste über den Download-Pfeil in der Symbolleiste oder suche im Download-Ordner nach `web-live-tracker/einmaleins-test`. Darunter findest du den Datumsordner und die Ordner für die aufgerufenen Webadressen.
 
