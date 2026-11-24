@@ -13,3 +13,9 @@ Web Live Tracker is a desktop browser extension for Chrome and Firefox. It captu
 Download the Chrome and Firefox ZIPs from [GitHub Releases](https://github.com/mlieshoff/web-live-tracker/releases). Each release lists the story and task titles. Both editions use the same capture code.
 
 [Deutsch](README_DE.md)
+
+## Updating the extension version
+
+Update [VERSION](VERSION) and the `version` fields in both browser manifests in the same commit. Use `MAJOR.MINOR.PATCH`, with major bumps for breaking changes, minor bumps for compatible features, and patch bumps for compatible fixes.
+
+With Node.js available, run `sh scripts/package-extension.sh chrome` or `sh scripts/package-extension.sh firefox` to build the ZIPs in `dist/`. Packaging reads the version and manifests from the current commit and rejects a mismatch in either manifest.
