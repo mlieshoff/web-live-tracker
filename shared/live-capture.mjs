@@ -7,12 +7,13 @@ import { captureReport } from "./report.mjs";
 
 const errorHistoryLimit = 30;
 
-export function createLiveCapture({ requestFinished, writeFile, writeReport, findEarlierDownloads, resolveDownloadRoot, readResponseContent, onStatus, now = Date.now }) {
+export function createLiveCapture({ requestFinished, writeFile, writeReport, readEarlierFolder, readResponseContent, onStatus, now = Date.now }) {
   let researchId;
   let active = false;
   let startedAt;
   let records;
   let report;
+  let lastCapture;
   let queue = Promise.resolve();
   let captured = 0;
   let pending = 0;
@@ -66,34 +67,29 @@ export function createLiveCapture({ requestFinished, writeFile, writeReport, fin
     publish();
   }, () => startedAt.getTime());
 
-  function enqueueReport(id, reportDate, currentRecords, historyOnly) {
+  function enqueueReport(id, reportDate, currentRecords, historyOnly, selectedEntries) {
     report = { state: "saving" };
     queue = queue.then(async () => {
       try {
         const folder = exportFolder(id, reportDate).split("/").slice(0, -1).join("/");
         const stamp = reportDate.toISOString().replace(/[:.]/g, "-");
-        let earlier = { records: [], locationUnconfirmed: false };
-        let historyUnavailable = false;
-        if (findEarlierDownloads) {
+        let entries = selectedEntries;
+        let folderUnavailable = false;
+        if (entries === undefined && readEarlierFolder) {
           try {
-            const items = await findEarlierDownloads(id);
-            earlier = earlierCaptureRecords(items, id, reportDate, currentRecords);
-            if (earlier.locationUnconfirmed && resolveDownloadRoot) {
-              const root = await resolveDownloadRoot(id).catch(() => undefined);
-              if (root !== undefined) {
-                earlier = earlierCaptureRecords(items, id, reportDate, currentRecords, root);
-              }
-            }
+            entries = await readEarlierFolder(id);
           } catch {
-            historyUnavailable = true;
+            folderUnavailable = true;
           }
         }
+        const needsFolder = Boolean(readEarlierFolder && entries == null);
+        const earlier = earlierCaptureRecords(entries ?? [], id, currentRecords);
         const file = captureReport({
           researchId: id, startedAt: reportDate, records: [...earlier.records, ...currentRecords],
-          historyUnavailable, locationUnconfirmed: earlier.locationUnconfirmed, historyOnly,
+          unreadable: earlier.unreadable, folderUnavailable, folderNotSelected: needsFolder, historyOnly,
         });
         const result = await writeReport(`${folder}/capture-${stamp}.html`, file);
-        report = { state: "ready", researchId: id, historyOnly, ...result };
+        report = { state: "ready", researchId: id, historyOnly, needsFolder, ...result };
       } catch (error) {
         report = {
           state: "failed",
@@ -109,10 +105,11 @@ export function createLiveCapture({ requestFinished, writeFile, writeReport, fin
   }
 
   return {
-    prepareReport(id) {
+    prepareReport(id, entries) {
       validateResearchId(id);
       if (!writeReport || active || pending > 0 || report?.state === "saving") return undefined;
-      const result = enqueueReport(id, new Date(now()), [], true);
+      const previous = lastCapture?.id === id ? lastCapture : null;
+      const result = enqueueReport(id, previous?.date ?? new Date(now()), previous?.records ?? [], !previous, entries);
       publish();
       return result;
     },
@@ -138,7 +135,10 @@ export function createLiveCapture({ requestFinished, writeFile, writeReport, fin
       if (active) {
         capture.stop();
         active = false;
-        if (writeReport) enqueueReport(researchId, startedAt, records, false);
+        if (writeReport) {
+          lastCapture = { id: researchId, date: startedAt, records };
+          enqueueReport(researchId, startedAt, records, false);
+        }
         publish();
       }
       return queue;

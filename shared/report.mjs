@@ -28,18 +28,21 @@ function fileDescription(file, direction) {
   if (file.status === "absent") {
     return direction === "response" ? "The website did not send a file." : "The browser did not send a file.";
   }
+  if (file.status === "missing-from-folder") return "The earlier file is missing from the research folder.";
   if (file.status === "saved") return "The browser provided the file, but it could not be saved.";
   return "The browser could not provide this file.";
 }
 
-export function captureReport({ researchId, startedAt, records, historyUnavailable = false, locationUnconfirmed = false, historyOnly = false }) {
+export function captureReport({ researchId, startedAt, records, unreadable = 0, folderUnavailable = false, folderNotSelected = false, historyOnly = false }) {
   const groupedFiles = new Map(groups.map((group) => [group, []]));
   const issues = [];
-  if (historyUnavailable) {
-    issues.push("<li>The browser’s Downloads history could not be read. Earlier files may still be in Downloads.</li>");
+  if (folderUnavailable) {
+    issues.push("<li>Earlier files could not be read. Check the research folder in Downloads.</li>");
+  } else if (folderNotSelected) {
+    issues.push("<li>Use Open capture report in Web Live Tracker to choose the research folder and include earlier files.</li>");
   }
-  if (locationUnconfirmed) {
-    issues.push("<li>Earlier downloads were found, but this capture did not confirm their location. Look in your research folder in Downloads.</li>");
+  if (unreadable) {
+    issues.push(`<li>${unreadable} raw ${unreadable === 1 ? "record could" : "records could"} not be read.</li>`);
   }
   const exchanges = [];
   const sites = new Set();
@@ -88,11 +91,12 @@ export function captureReport({ researchId, startedAt, records, historyUnavailab
     }
 
     const raw = indexPath ? fileLink(indexPath, "Open raw record (JSON)") : "";
-    const time = earlier ? new Date(record.downloadedAt).toLocaleString() : metadata.timestamp;
-    const technicalDetails = earlier ? "Found in this browser’s Downloads history."
-      : `${escapeHtml(metadata.method)} ${escapeHtml(metadata.url)} · Status ${escapeHtml(metadata.status)}`;
+    const time = metadata?.timestamp ?? new Date(record.capturedAt).toLocaleDateString();
+    const technicalDetails = metadata
+      ? `${escapeHtml(metadata.method)} ${escapeHtml(metadata.url)} · Status ${escapeHtml(metadata.status)}`
+      : "Files saved in this research folder in Downloads.";
     exchanges.push(`<details>
-      <summary>${escapeHtml(name)} · ${escapeHtml(time)}${earlier ? " · Earlier download" : ""}</summary>
+      <summary>${escapeHtml(name)} · ${escapeHtml(time)}${earlier ? " · Earlier capture" : ""}</summary>
       <p id="exchange-${index + 1}">${technicalDetails}</p>
       ${error ? `<p>${escapeHtml(error)}</p>` : `<ul>${notes.join("")}</ul>`}
       ${raw}
@@ -123,7 +127,7 @@ export function captureReport({ researchId, startedAt, records, historyUnavailab
   <h1>${escapeHtml(researchId)} · Capture report</h1>
   <p>${historyOnly ? "Report created" : "Started"} ${escapeHtml(startedAt.toLocaleString())} · ${saved} ${saved === 1 ? "file" : "files"} saved</p>
   <p>Downloads/web-live-tracker/${escapeHtml(researchId)}/</p>
-  ${records.some((record) => record.earlier) ? "<p>Includes earlier files found in this browser’s Downloads history. Open their raw records for capture details.</p>" : ""}
+  ${records.some((record) => record.earlier) ? "<p>Includes earlier files saved in this research folder. Open their raw records for capture details.</p>" : ""}
   ${sites.size ? `<p>Websites recorded · ${escapeHtml([...sites].join(", "))}</p>` : ""}
   <nav aria-label="Report sections">
     <a href="#files">Saved files</a><a href="#issues">What needs attention</a><a href="#details">Technical details</a>

@@ -1,5 +1,4 @@
-import { searchCaptureDownloads } from "../shared/earlier-captures.mjs";
-import { confirmDownloadRoot, DownloadError, downloadWithDetails } from "../shared/export.mjs";
+import { DownloadError, downloadWithDetails } from "../shared/export.mjs";
 
 browser.runtime.onMessage.addListener((message, sender) => {
   if (sender.id !== browser.runtime.id ||
@@ -7,11 +6,9 @@ browser.runtime.onMessage.addListener((message, sender) => {
     return undefined;
   }
 
-  if (message?.action === "findEarlierDownloads") {
-    return searchCaptureDownloads(browser.downloads, message.researchId);
-  }
-  if (message?.action === "resolveDownloadRoot") {
-    return confirmDownloadRoot(browser.downloads, message.researchId);
+  if (message?.action === "openCaptureFolderPicker" &&
+      typeof message.url === "string" && message.url.startsWith(browser.runtime.getURL("shared/capture-folder.html?"))) {
+    return browser.tabs.create({ url: message.url }).then(() => true);
   }
   if (message?.action === "showCaptureReport" && Number.isSafeInteger(message.id)) {
     const url = browser.runtime.getURL(`shared/report-open.html?id=${message.id}`);

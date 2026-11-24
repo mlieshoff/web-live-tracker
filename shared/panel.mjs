@@ -1,5 +1,7 @@
+import { readGrantedCaptureDirectory } from "./capture-folder.mjs";
+import { validateResearchId } from "./export.mjs";
 import { createLiveCapture } from "./live-capture.mjs";
-import { findEarlierDownloads, networkMonitorTip, openCaptureReport, readResponseContent, requestFinished, resolveDownloadRoot, saveCaptureReport, saveExtensionFile } from "../browser/browser-api.mjs";
+import { networkMonitorTip, openCaptureFolderPicker, openCaptureReport, readResponseContent, requestFinished, saveCaptureReport, saveExtensionFile } from "../browser/browser-api.mjs";
 
 const form = document.querySelector("#capture-form");
 const researchId = document.querySelector("#research-id");
@@ -17,6 +19,8 @@ const savedCount = document.querySelector("#saved-count");
 const pendingCount = document.querySelector("#pending-count");
 const openReport = document.querySelector("#open-report");
 const reportError = document.querySelector("#report-error");
+const runtime = (globalThis.browser ?? globalThis.chrome).runtime;
+let pickerUrl;
 let readyReport;
 let displayedReport;
 let displayedErrors;
@@ -86,36 +90,72 @@ function onStatus({
 }
 
 const capture = createLiveCapture({
-  requestFinished, writeFile: saveExtensionFile, writeReport: saveCaptureReport, findEarlierDownloads,
-  resolveDownloadRoot, readResponseContent, onStatus,
+  requestFinished, writeFile: saveExtensionFile, writeReport: saveCaptureReport,
+  readEarlierFolder: readGrantedCaptureDirectory, readResponseContent, onStatus,
 });
 
-openReport.addEventListener("click", async () => {
-  const id = researchId.value;
-  let report = readyReport;
-  if (report?.researchId !== id) {
-    try {
-      const prepared = capture.prepareReport(id);
-      showText(savePath, `Downloads/web-live-tracker/${id}/`);
-      showText(idError, "");
-      researchId.removeAttribute("aria-invalid");
-      if (prepared) status.focus();
-      report = await prepared;
-    } catch (error) {
-      showResearchIdError(error);
-      return;
-    }
-  }
-
-  if (report?.state !== "ready") return;
+async function showReport(report) {
+  if (report?.state !== "ready") return false;
   try {
     await openCaptureReport(report.id);
     if (readyReport === report) showText(reportError, "");
+    return true;
   } catch {
     if (readyReport === report) {
       showText(reportError, `Could not open the report. Open ${report.filename} from your browser’s Downloads.`);
     }
+    return false;
   }
+}
+
+async function prepareSelectedReport(id, entries) {
+  const prepared = capture.prepareReport(id, entries);
+  if (prepared) status.focus();
+  return showReport(await prepared);
+}
+
+openReport.addEventListener("click", async () => {
+  const id = researchId.value;
+  if (readyReport?.researchId === id && !readyReport.needsFolder) {
+    await showReport(readyReport);
+    return;
+  }
+  try {
+    validateResearchId(id);
+  } catch (error) {
+    showResearchIdError(error);
+    return;
+  }
+
+  showText(savePath, `Downloads/web-live-tracker/${id}/`);
+  showText(idError, "");
+  researchId.removeAttribute("aria-invalid");
+  openReport.disabled = true;
+  try {
+    const entries = await readGrantedCaptureDirectory(id).catch(() => null);
+    if (researchId.value !== id || researchId.disabled) return;
+    if (entries !== null) {
+      await prepareSelectedReport(id, entries);
+    } else {
+      const url = new URL("capture-folder.html", location.href);
+      url.search = new URLSearchParams({ researchId: id, request: crypto.randomUUID() });
+      pickerUrl = url.href;
+      await openCaptureFolderPicker(pickerUrl);
+    }
+  } catch {
+    showText(reportError, "Could not open the research folder picker. Try again.");
+  } finally {
+    openReport.disabled = researchId.disabled || !researchId.value;
+  }
+});
+
+runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (!pickerUrl || sender.url !== pickerUrl || message?.action !== "openReportFromFolder" ||
+      researchId.disabled || message.researchId !== researchId.value || !Array.isArray(message.entries)) return;
+
+  pickerUrl = undefined;
+  prepareSelectedReport(message.researchId, message.entries).then(sendResponse, () => sendResponse(false));
+  return true;
 });
 
 function showResearchIdError(error) {
@@ -127,6 +167,7 @@ function showResearchIdError(error) {
 form.addEventListener("submit", (event) => {
   event.preventDefault();
   try {
+    pickerUrl = undefined;
     capture.start(researchId.value);
     showText(savePath, `Downloads/web-live-tracker/${researchId.value}/`);
     idError.textContent = "";
@@ -138,6 +179,7 @@ form.addEventListener("submit", (event) => {
 });
 
 researchId.addEventListener("input", () => {
+  pickerUrl = undefined;
   idError.textContent = "";
   showText(reportError, "");
   openReport.disabled = !researchId.value;

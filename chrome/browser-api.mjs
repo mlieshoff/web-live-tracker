@@ -1,5 +1,4 @@
-import { searchCaptureDownloads } from "../shared/earlier-captures.mjs";
-import { confirmDownloadRoot, downloadFile, downloadWithDetails } from "../shared/export.mjs";
+import { downloadFile, downloadWithDetails } from "../shared/export.mjs";
 
 export const requestFinished = globalThis.chrome?.devtools?.network?.onRequestFinished;
 export const networkMonitorTip = "";
@@ -30,10 +29,6 @@ export async function openCaptureReport(id) {
   }
 }
 
-export function resolveDownloadRoot(researchId) {
-  return confirmDownloadRoot(globalThis.chrome.downloads, researchId);
-}
-
-export function findEarlierDownloads(researchId) {
-  return searchCaptureDownloads(globalThis.chrome.downloads, researchId);
+export function openCaptureFolderPicker(url) {
+  return globalThis.chrome.tabs.create({ url });
 }

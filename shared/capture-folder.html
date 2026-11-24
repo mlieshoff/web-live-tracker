@@ -1,0 +1,15 @@
+<!doctype html>
+<html lang="en">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Choose research folder</title>
+  <link rel="stylesheet" href="panel.css">
+  <script type="module" src="capture-folder-page.mjs"></script>
+  <main>
+    <h1>Choose research folder</h1>
+    <p>Select <strong id="expected-folder"></strong> or the <strong>web-live-tracker</strong> folder that contains it.</p>
+    <button id="choose-folder" type="button" hidden>Choose folder</button>
+    <input id="folder-files" type="file" webkitdirectory aria-label="Choose research folder" hidden>
+    <p id="folder-status" role="status"></p>
+  </main>
+</html>
