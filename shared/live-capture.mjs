@@ -4,6 +4,7 @@ import { DownloadError, exportFolder, validateResearchId } from "./export.mjs";
 import { prepareMediaRetry, retryUnavailableMedia } from "./media-retry.mjs";
 import { capturePayload, exportPayloads } from "./payload.mjs";
 import { captureReport } from "./report.mjs";
+import { createSvgPreviewReader } from "./svg-preview.mjs";
 
 const errorHistoryLimit = 30;
 
@@ -13,6 +14,7 @@ export function createLiveCapture({ requestFinished, writeFile, writeReport, rea
   let startedAt;
   let records;
   let responseFiles;
+  let readSvgPreview;
   let report;
   let lastCapture;
   let queue = Promise.resolve();
@@ -48,7 +50,7 @@ export function createLiveCapture({ requestFinished, writeFile, writeReport, rea
           throw new Error("Payload unavailable");
         }
         exchange.response = await retryUnavailableMedia(retry, exchange.response);
-        const result = await exportPayloads(writeFile, id, [exchange], date, responseFiles);
+        const result = await exportPayloads(writeFile, id, [exchange], date, responseFiles, readSvgPreview);
         saved += result.saved;
         if (writeReport) records.push(...result.records);
         if (result.errors.length) {
@@ -123,6 +125,7 @@ export function createLiveCapture({ requestFinished, writeFile, writeReport, rea
       startedAt = new Date(now());
       records = [];
       responseFiles = new Map();
+      readSvgPreview = createSvgPreviewReader();
       report = undefined;
       captured = 0;
       saved = 0;
