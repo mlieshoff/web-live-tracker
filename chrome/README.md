@@ -29,7 +29,7 @@ After selecting **Stop capture**, keep DevTools open until the panel says your r
 
 You can reopen the report from Downloads or find `capture-*.html` in `web-live-tracker/<research-id>/`. Keep it in that folder so the file links work.
 
-To review a previous capture, enter its **Research ID** and select **Open capture report**. You can do this before starting a new capture. The report automatically links earlier files found in this browser’s Downloads history under `Downloads/web-live-tracker/<research-id>/`. Open the raw records for the earlier capture details. If the browser’s download history was cleared, look for the earlier files in that folder.
+To review a previous capture, enter its **Research ID** and select **Open capture report** before or after recording. If asked, select the matching folder under `Downloads/web-live-tracker/` or pick the parent `web-live-tracker` folder. The report reads the files directly from the selected folder, so clearing download history has no effect. Chrome starts the picker in Downloads and can reuse a previously selected folder while access is granted.
 
 The base folder is Chrome’s configured download location. To find it, open `chrome://downloads` and use the folder icon next to a saved file, or check the location at `chrome://settings/downloads`.
 

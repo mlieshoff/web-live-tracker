@@ -37,12 +37,7 @@ export function openCaptureReport(id) {
   });
 }
 
-export async function findEarlierDownloads(researchId) {
-  const items = await globalThis.browser.runtime.sendMessage({ action: "findEarlierDownloads", researchId });
-  if (!Array.isArray(items)) throw new Error("Firefox could not read earlier downloads.");
-  return items;
-}
-
-export function resolveDownloadRoot(researchId) {
-  return globalThis.browser.runtime.sendMessage({ action: "resolveDownloadRoot", researchId });
+export async function openCaptureFolderPicker(url) {
+  const opened = await globalThis.browser.runtime.sendMessage({ action: "openCaptureFolderPicker", url });
+  if (!opened) throw new Error("Could not open the research folder picker.");
 }

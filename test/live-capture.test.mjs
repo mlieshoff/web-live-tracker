@@ -224,7 +224,7 @@ test("stop saves one report after the raw files and links to their final names a
     [...downloads.keys()].sort());
   assert.match(html, /response%20%232\.txt/);
   assert.deepEqual(lastStatus.report, {
-    state: "ready", researchId: "study", historyOnly: false, id: 7, filename: path.split("/").at(-1),
+    state: "ready", researchId: "study", historyOnly: false, needsFolder: false, id: 7, filename: path.split("/").at(-1),
   });
 });
 
@@ -247,29 +247,31 @@ test("report download failure is shown and a new capture can start", async () =>
   assert.equal(lastStatus.active, true);
 });
 
-test("a continued report automatically includes earlier Downloads and newly saved files", async () => {
+
+const earlierDirectory = "2025-12-31/example.test/earlier/01234567-abcd-4567-1";
+const earlierEntry = {
+  directory: earlierDirectory,
+  files: ["response.txt", "exchange.json"],
+  index: {
+    name: "exchange.json",
+    text: JSON.stringify({
+      timestamp: "2025-12-31T12:00:00Z", method: "GET", status: 200,
+      url: "https://example.test/earlier", requestBody: "absent",
+      responseBody: "saved", responseFile: "response.txt",
+    }),
+  },
+};
+
+test("a granted folder automatically supplies earlier files and merges the current capture", async () => {
   const date = new Date(2026, 0, 1);
   const event = networkEvent();
   let report;
-  const currentItems = [];
-  const folder = "web-live-tracker/study/2025-12-31/example.test/earlier/01234567-abcd-4567-1";
   const capture = createLiveCapture({
     requestFinished: event,
-    async writeFile(path) {
-      currentItems.push({
-        filename: `/Downloads/${path}`, startTime: date.toISOString(), state: "complete", exists: true,
-      });
-      return path.split("/").at(-1);
-    },
-    async findEarlierDownloads(id) {
+    async writeFile(path) { return path.split("/").at(-1); },
+    async readEarlierFolder(id) {
       assert.equal(id, "study");
-      const earlierItems = ["response.txt", "exchange.json"].map((name) => ({
-        filename: `/Downloads/${folder}/${name}`,
-        startTime: new Date(2025, 11, 31, 12).toISOString(),
-        state: "complete",
-        exists: true,
-      }));
-      return [...currentItems, ...earlierItems];
+      return [earlierEntry];
     },
     async writeReport(path, data) {
       report = await data.text();
@@ -281,73 +283,54 @@ test("a continued report automatically includes earlier Downloads and newly save
   });
   capture.start("study");
   event.emit(entry("new", date));
-  await capture.stop();
-
+  const saved = await capture.stop();
+  assert.equal(saved.needsFolder, false);
   assert.match(report, /2025-12-31\/example.test\/earlier\/[^"]+\/response.txt/);
   assert.match(report, /2026-01-01\/example.test\/new\/[^"]+\/response.txt/);
 });
 
-test("a download history error still produces a report for the current capture", async () => {
+test("a report from selected files opens before starting a capture", async () => {
   const event = networkEvent();
   let report;
   const capture = createLiveCapture({
     requestFinished: event,
-    async findEarlierDownloads() { throw new Error("History unavailable"); },
+    async readEarlierFolder() { return null; },
     async writeReport(path, data) {
       report = await data.text();
       return { id: 1, filename: path.split("/").at(-1) };
     },
     onStatus() {},
   });
-
-  capture.start("study");
-  await capture.stop();
-
-  assert.match(report, /Downloads history could not be read/);
+  const saved = await capture.prepareReport("study", [earlierEntry]);
+  assert.equal(event.listeners.size, 0);
+  assert.equal(saved.needsFolder, false);
+  assert.match(report, /Report created/);
+  assert.match(report, /earlier\/01234567-abcd-4567-1\/response.txt/);
 });
 
-test("opening a report before starting capture finds existing files in the actual Downloads folder", async () => {
-  const date = new Date("2026-02-01T12:00:00Z");
+test("a current report can be completed with folder contents after stopping", async () => {
   const event = networkEvent();
-  const fault = "web-live-tracker/study/2026-01-11/example.test/another-location/87654321-abcd-4567-1";
-  const folder = "web-live-tracker/study/2026-01-11/example.test/earlier/01234567-abcd-4567-1";
-  const old = (filename) => ({ filename, startTime: "2026-01-11T09:00:00Z", state: "complete", exists: true });
-  const calls = [];
+  const date = new Date(2026, 0, 1);
   let html;
   const capture = createLiveCapture({
     requestFinished: event,
-    async findEarlierDownloads(id) {
-      calls.push(["search", id]);
-      return [
-        old(`/Downloads/${folder}/response.txt`),
-        old(`/Downloads/${folder}/exchange.json`),
-        old(`/OldDownloads/${fault}/response.txt`),
-      ];
-    },
-    async resolveDownloadRoot(id) {
-      calls.push(["resolve", id]);
-      return "/Downloads";
-    },
+    async readEarlierFolder() { return null; },
+    async writeFile(path) { return path.split("/").at(-1); },
     async writeReport(path, data) {
-      calls.push(["save", path]);
       html = await data.text();
-      return { id: 9, filename: path.split("/").at(-1) };
+      return { id: 1, filename: path.split("/").at(-1) };
     },
-    now: () => date.getTime(),
+    readResponseContent,
     onStatus() {},
+    now: () => date.getTime() - 1,
   });
-
-  const report = await capture.prepareReport("study");
-
-  assert.equal(event.listeners.size, 0);
-  assert.deepEqual(calls, [
-    ["search", "study"], ["resolve", "study"], ["save", "web-live-tracker/study/capture-2026-02-01T12-00-00-000Z.html"],
-  ]);
-  assert.deepEqual(report, {
-    state: "ready", researchId: "study", historyOnly: true, id: 9, filename: "capture-2026-02-01T12-00-00-000Z.html",
-  });
-  assert.match(html, /Report created/);
-  assert.match(html, /earlier\/01234567-abcd-4567-1\/response\.txt/);
-  assert.match(html, /earlier\/01234567-abcd-4567-1\/exchange\.json/);
-  assert.doesNotMatch(html, /another-location/);
+  capture.start("study");
+  event.emit(entry("new", date));
+  assert.equal((await capture.stop()).needsFolder, true);
+  assert.match(html, /choose the research folder/);
+  const saved = await capture.prepareReport("study", [earlierEntry]);
+  assert.equal(saved.needsFolder, false);
+  assert.equal(saved.historyOnly, false);
+  assert.match(html, /earlier\/01234567-abcd-4567-1\/response.txt/);
+  assert.match(html, /2026-01-01\/example.test\/new\//);
 });

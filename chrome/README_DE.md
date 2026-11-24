@@ -28,7 +28,7 @@ Falls Chrome beim Speichern nach einem Ablageort fragt, findest du die Einstellu
 
 Der Bericht gruppiert gespeicherte Dateien nach Typ und verlinkt sie direkt. Unter **What needs attention** steht, warum Dateien fehlen oder unvollständig sind. Du findest den Bericht auch unter `web-live-tracker/<research-id>/capture-*.html`. Lass ihn in diesem Ordner, damit die Links funktionieren.
 
-Um eine frühere Aufzeichnung zu öffnen, gib ihre **Research ID** ein und wähle **Open capture report**, bevor du eine neue Aufzeichnung startest. Der Bericht verlinkt frühere Dateien automatisch, wenn sie im Download-Verlauf dieses Browsers unter `Downloads/web-live-tracker/<research-id>/` zu finden sind. Die Rohdaten enthalten die Details früherer Aufzeichnungen. Wenn der Download-Verlauf gelöscht wurde, findest du die Dateien weiterhin in diesem Ordner.
+Um eine frühere Aufzeichnung zu öffnen, gib ihre **Research ID** ein und wähle **Open capture report**. Wähle bei Bedarf den passenden Ordner unter `Downloads/web-live-tracker/` oder den übergeordneten Ordner `web-live-tracker`. Der Bericht liest die Dateien direkt aus dem ausgewählten Ordner. Der Download-Verlauf spielt dabei keine Rolle. Chrome öffnet die Ordnerauswahl in Downloads und verwendet einen bereits freigegebenen Ordner erneut, solange die Freigabe gültig ist.
 
 1. Öffne in einem neuen Chrome-Tab `chrome://downloads`.
 2. Klicke bei einer Datei aus dieser Aufzeichnung auf das Ordnersymbol. So springst du direkt zum Speicherort. Du kannst auch deinen üblichen Downloads-Ordner öffnen und dort nach `web-live-tracker` suchen.
