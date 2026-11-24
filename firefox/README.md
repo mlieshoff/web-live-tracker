@@ -6,7 +6,7 @@ This package shares the capture panel, payload handling, and file layout with th
 
 ## Install in desktop Firefox
 
-1. Save `web-live-tracker-firefox.zip` to your computer.
+1. Download `web-live-tracker-firefox.zip` from [GitHub Releases](https://github.com/mlieshoff/web-live-tracker/releases).
 2. Open `about:debugging#/runtime/this-firefox` in Firefox.
 3. Select **Load Temporary Add-on…** and choose the ZIP. You can also extract it and select the `manifest.json` at the root of the extracted files.
 
@@ -32,4 +32,4 @@ To review a previous capture, enter its **Research ID** and select **Open captur
 
 ## Build the ZIP
 
-Run `sh scripts/package-extension.sh firefox` from the repository root. The command writes `firefox/web-live-tracker-firefox.zip` from the committed sources and guides.
+Run `sh scripts/package-extension.sh firefox` from the repository root. The command writes `dist/web-live-tracker-firefox.zip` from the committed sources and guides.

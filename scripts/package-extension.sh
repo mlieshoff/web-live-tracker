@@ -12,13 +12,15 @@ case "$browser" in
     ;;
 esac
 
-archive="$project_root/$browser/web-live-tracker-$browser.zip"
+output_directory="$project_root/dist"
+mkdir -p -- "$output_directory"
+archive="$output_directory/web-live-tracker-$browser.zip"
 if [ -d "$archive" ]; then
   printf '%s\n' 'The ZIP destination is already a directory.' >&2
   exit 1
 fi
 
-temporary_archive=$(mktemp "$project_root/.web-live-tracker.XXXXXX")
+temporary_archive=$(mktemp "$output_directory/.web-live-tracker.XXXXXX")
 trap 'rm -f -- "$temporary_archive"' EXIT
 trap 'exit 1' HUP INT TERM
 
