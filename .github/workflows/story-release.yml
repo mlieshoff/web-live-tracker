@@ -1,0 +1,56 @@
+name: Publish story release
+
+on:
+  pull_request:
+    types: [closed]
+    branches: [main]
+
+permissions: {}
+
+jobs:
+  release:
+    if: >-
+      github.event.pull_request.merged &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      startsWith(github.event.pull_request.head.ref, 'story/')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      issues: read
+    concurrency:
+      group: story-release-${{ github.event.pull_request.number }}
+      cancel-in-progress: false
+    env:
+      MERGE_SHA: ${{ github.event.pull_request.merge_commit_sha }}
+    steps:
+      - name: Check out merged code
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: ${{ env.MERGE_SHA }}
+          persist-credentials: false
+
+      - name: Build browser ZIPs
+        run: |
+          test -n "$MERGE_SHA"
+          test "$(git rev-parse HEAD)" = "$MERGE_SHA"
+          sh scripts/package-extension.sh chrome
+          sh scripts/package-extension.sh firefox
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          tag="story-pr-$PR_NUMBER"
+          if draft=$(gh release view "$tag" --json isDraft --jq .isDraft); then
+            if [[ "$draft" == false ]]; then
+              exit 0
+            fi
+          else
+            node scripts/story-release-notes.mjs > dist/release-notes.md
+            gh release create "$tag" --draft --target "$MERGE_SHA" \
+              --title "Story PR #$PR_NUMBER" --notes-file dist/release-notes.md
+          fi
+          gh release upload "$tag" --clobber \
+            dist/web-live-tracker-chrome.zip dist/web-live-tracker-firefox.zip
+          gh release edit "$tag" --draft=false --target "$MERGE_SHA"
