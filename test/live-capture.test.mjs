@@ -223,7 +223,9 @@ test("stop saves one report after the raw files and links to their final names a
   assert.deepEqual(links.map((href) => decodeURIComponent(new URL(href, reportUrl).pathname.slice(1))).sort(),
     [...downloads.keys()].sort());
   assert.match(html, /response%20%232\.txt/);
-  assert.deepEqual(lastStatus.report, { state: "ready", id: 7, filename: path.split("/").at(-1) });
+  assert.deepEqual(lastStatus.report, {
+    state: "ready", researchId: "study", historyOnly: false, id: 7, filename: path.split("/").at(-1),
+  });
 });
 
 test("report download failure is shown and a new capture can start", async () => {
@@ -302,4 +304,50 @@ test("a download history error still produces a report for the current capture",
   await capture.stop();
 
   assert.match(report, /Downloads history could not be read/);
+});
+
+test("opening a report before starting capture finds existing files in the actual Downloads folder", async () => {
+  const date = new Date("2026-02-01T12:00:00Z");
+  const event = networkEvent();
+  const fault = "web-live-tracker/study/2026-01-11/example.test/another-location/87654321-abcd-4567-1";
+  const folder = "web-live-tracker/study/2026-01-11/example.test/earlier/01234567-abcd-4567-1";
+  const old = (filename) => ({ filename, startTime: "2026-01-11T09:00:00Z", state: "complete", exists: true });
+  const calls = [];
+  let html;
+  const capture = createLiveCapture({
+    requestFinished: event,
+    async findEarlierDownloads(id) {
+      calls.push(["search", id]);
+      return [
+        old(`/Downloads/${folder}/response.txt`),
+        old(`/Downloads/${folder}/exchange.json`),
+        old(`/OldDownloads/${fault}/response.txt`),
+      ];
+    },
+    async resolveDownloadRoot(id) {
+      calls.push(["resolve", id]);
+      return "/Downloads";
+    },
+    async writeReport(path, data) {
+      calls.push(["save", path]);
+      html = await data.text();
+      return { id: 9, filename: path.split("/").at(-1) };
+    },
+    now: () => date.getTime(),
+    onStatus() {},
+  });
+
+  const report = await capture.prepareReport("study");
+
+  assert.equal(event.listeners.size, 0);
+  assert.deepEqual(calls, [
+    ["search", "study"], ["resolve", "study"], ["save", "web-live-tracker/study/capture-2026-02-01T12-00-00-000Z.html"],
+  ]);
+  assert.deepEqual(report, {
+    state: "ready", researchId: "study", historyOnly: true, id: 9, filename: "capture-2026-02-01T12-00-00-000Z.html",
+  });
+  assert.match(html, /Report created/);
+  assert.match(html, /earlier\/01234567-abcd-4567-1\/response\.txt/);
+  assert.match(html, /earlier\/01234567-abcd-4567-1\/exchange\.json/);
+  assert.doesNotMatch(html, /another-location/);
 });

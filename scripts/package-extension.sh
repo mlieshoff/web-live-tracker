@@ -23,7 +23,7 @@ trap 'rm -f -- "$temporary_archive"' EXIT
 trap 'exit 1' HUP INT TERM
 
 shared_tree=$(git -C "$project_root" rev-parse HEAD:shared)
-browser_files=$(git -C "$project_root" ls-tree "HEAD:$browser" browser-api.mjs background.mjs report-open.html report-open.mjs)
+browser_files=$(git -C "$project_root" ls-tree "HEAD:$browser" browser-api.mjs background.mjs)
 browser_tree=$(printf '%s\n' "$browser_files" | git -C "$project_root" mktree)
 package_files=$(git -C "$project_root" ls-tree "HEAD:$browser" manifest.json README.md README_DE.md)
 tree=$(

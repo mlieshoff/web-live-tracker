@@ -74,10 +74,10 @@ export async function downloadFile(downloads, filename, data) {
   return (await downloadWithDetails(downloads, filename, data)).filename;
 }
 
-export async function downloadWithDetails(downloads, filename, data) {
+export async function downloadWithDetails(downloads, filename, data, options = {}) {
   const url = URL.createObjectURL(data);
   try {
-    const id = await downloads.download({ url, filename, conflictAction: "uniquify" });
+    const id = await downloads.download({ url, filename, conflictAction: "uniquify", ...options });
     const completedPath = await waitForDownload(downloads, id);
     const actualPath = completedPath || (await downloads.search({ id }).catch(() => []))[0]?.filename;
     return { id, filename: (actualPath || filename).split(/[\\/]/).at(-1) };
@@ -95,5 +95,22 @@ export async function downloadWithDetails(downloads, filename, data) {
     throw new DownloadError("The browser could not save the file. Check your browser’s downloads.");
   } finally {
     URL.revokeObjectURL(url);
+  }
+}
+
+export async function confirmDownloadRoot(downloads, researchId) {
+  validateResearchId(researchId);
+  const folder = `web-live-tracker/${researchId}`;
+  const filename = `${folder}/report-location-${crypto.randomUUID()}.txt`;
+  // Downloads does not expose its configured path. Resolve it with a non-interactive
+  // download and remove only the temporary file created by this call.
+  const { id } = await downloadWithDetails(downloads, filename, new Blob([""], { type: "text/plain" }), { saveAs: false });
+  try {
+    const [item] = await downloads.search({ id });
+    const path = item?.filename?.replaceAll("\\", "/");
+    return path?.endsWith(`/${filename}`) ? path.slice(0, -filename.length - 1) : undefined;
+  } finally {
+    await downloads.removeFile(id);
+    await downloads.erase({ id });
   }
 }

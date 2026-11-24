@@ -32,7 +32,7 @@ function fileDescription(file, direction) {
   return "The browser could not provide this file.";
 }
 
-export function captureReport({ researchId, startedAt, records, historyUnavailable = false, locationUnconfirmed = false }) {
+export function captureReport({ researchId, startedAt, records, historyUnavailable = false, locationUnconfirmed = false, historyOnly = false }) {
   const groupedFiles = new Map(groups.map((group) => [group, []]));
   const issues = [];
   if (historyUnavailable) {
@@ -121,7 +121,7 @@ export function captureReport({ researchId, startedAt, records, historyUnavailab
 </style>
 <main>
   <h1>${escapeHtml(researchId)} · Capture report</h1>
-  <p>Started ${escapeHtml(startedAt.toLocaleString())} · ${saved} ${saved === 1 ? "file" : "files"} saved</p>
+  <p>${historyOnly ? "Report created" : "Started"} ${escapeHtml(startedAt.toLocaleString())} · ${saved} ${saved === 1 ? "file" : "files"} saved</p>
   <p>Downloads/web-live-tracker/${escapeHtml(researchId)}/</p>
   ${records.some((record) => record.earlier) ? "<p>Includes earlier files found in this browser’s Downloads history. Open their raw records for capture details.</p>" : ""}
   ${sites.size ? `<p>Websites recorded · ${escapeHtml([...sites].join(", "))}</p>` : ""}
@@ -138,7 +138,7 @@ export function captureReport({ researchId, startedAt, records, historyUnavailab
   </section>
   <section id="details">
     <h2>Technical details</h2>
-    ${exchanges.join("") || "<p>No completed requests were recorded.</p>"}
+    ${exchanges.join("") || (historyOnly ? "<p>No saved capture records were found for this research ID.</p>" : "<p>No completed requests were recorded.</p>")}
   </section>
 </main>
 </html>`], { type: "text/html;charset=utf-8" });

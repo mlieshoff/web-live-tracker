@@ -7,7 +7,7 @@ import { captureReport } from "./report.mjs";
 
 const errorHistoryLimit = 30;
 
-export function createLiveCapture({ requestFinished, writeFile, writeReport, findEarlierDownloads, readResponseContent, onStatus, now = Date.now }) {
+export function createLiveCapture({ requestFinished, writeFile, writeReport, findEarlierDownloads, resolveDownloadRoot, readResponseContent, onStatus, now = Date.now }) {
   let researchId;
   let active = false;
   let startedAt;
@@ -66,7 +66,56 @@ export function createLiveCapture({ requestFinished, writeFile, writeReport, fin
     publish();
   }, () => startedAt.getTime());
 
+  function enqueueReport(id, reportDate, currentRecords, historyOnly) {
+    report = { state: "saving" };
+    queue = queue.then(async () => {
+      try {
+        const folder = exportFolder(id, reportDate).split("/").slice(0, -1).join("/");
+        const stamp = reportDate.toISOString().replace(/[:.]/g, "-");
+        let earlier = { records: [], locationUnconfirmed: false };
+        let historyUnavailable = false;
+        if (findEarlierDownloads) {
+          try {
+            const items = await findEarlierDownloads(id);
+            earlier = earlierCaptureRecords(items, id, reportDate, currentRecords);
+            if (earlier.locationUnconfirmed && resolveDownloadRoot) {
+              const root = await resolveDownloadRoot(id).catch(() => undefined);
+              if (root !== undefined) {
+                earlier = earlierCaptureRecords(items, id, reportDate, currentRecords, root);
+              }
+            }
+          } catch {
+            historyUnavailable = true;
+          }
+        }
+        const file = captureReport({
+          researchId: id, startedAt: reportDate, records: [...earlier.records, ...currentRecords],
+          historyUnavailable, locationUnconfirmed: earlier.locationUnconfirmed, historyOnly,
+        });
+        const result = await writeReport(`${folder}/capture-${stamp}.html`, file);
+        report = { state: "ready", researchId: id, historyOnly, ...result };
+      } catch (error) {
+        report = {
+          state: "failed",
+          error: error instanceof DownloadError ? error.message : "The capture report could not be saved.",
+        };
+      } finally {
+        records = [];
+        publish();
+      }
+      return report;
+    });
+    return queue;
+  }
+
   return {
+    prepareReport(id) {
+      validateResearchId(id);
+      if (!writeReport || active || pending > 0 || report?.state === "saving") return undefined;
+      const result = enqueueReport(id, new Date(now()), [], true);
+      publish();
+      return result;
+    },
     start(id) {
       if (active || pending > 0 || report?.state === "saving") {
         return;
@@ -89,39 +138,7 @@ export function createLiveCapture({ requestFinished, writeFile, writeReport, fin
       if (active) {
         capture.stop();
         active = false;
-        if (writeReport) {
-          report = { state: "saving" };
-          queue = queue.then(async () => {
-            try {
-              const folder = exportFolder(researchId, startedAt).split("/").slice(0, -1).join("/");
-              const stamp = startedAt.toISOString().replace(/[:.]/g, "-");
-              let earlier = { records: [], locationUnconfirmed: false };
-              let historyUnavailable = false;
-              if (findEarlierDownloads) {
-                try {
-                  const items = await findEarlierDownloads(researchId);
-                  earlier = earlierCaptureRecords(items, researchId, startedAt, records);
-                } catch {
-                  historyUnavailable = true;
-                }
-              }
-              const file = captureReport({
-                researchId, startedAt, records: [...earlier.records, ...records], historyUnavailable,
-                locationUnconfirmed: earlier.locationUnconfirmed,
-              });
-              const result = await writeReport(`${folder}/capture-${stamp}.html`, file);
-              report = { state: "ready", ...result };
-            } catch (error) {
-              report = {
-                state: "failed",
-                error: error instanceof DownloadError ? error.message : "The capture report could not be saved.",
-              };
-            } finally {
-              records = [];
-              publish();
-            }
-          });
-        }
+        if (writeReport) enqueueReport(researchId, startedAt, records, false);
         publish();
       }
       return queue;

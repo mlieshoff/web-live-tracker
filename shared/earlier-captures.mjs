@@ -53,7 +53,7 @@ function decodeComponent(part) {
   );
 }
 
-export function earlierCaptureRecords(items, researchId, startedAt, currentRecords) {
+export function earlierCaptureRecords(items, researchId, startedAt, currentRecords, confirmedRoot) {
   const downloads = items.map((item) => captureDownload(item, researchId)).filter(Boolean);
   const currentPaths = new Set(currentRecords.flatMap(({ indexPath, request, response }) =>
     [indexPath, request?.path, response?.path].filter(Boolean)
@@ -62,11 +62,10 @@ export function earlierCaptureRecords(items, researchId, startedAt, currentRecor
     timestamp < startedAt.getTime() && !currentPaths.has(path)
   );
   const currentRoots = new Set(downloads.filter(({ path }) => currentPaths.has(path)).map(({ root }) => root));
-  if (currentRoots.size !== 1) {
+  const root = confirmedRoot ?? (currentRoots.size === 1 ? [...currentRoots][0] : undefined);
+  if (root === undefined) {
     return { records: [], locationUnconfirmed: earlier.length > 0 };
   }
-
-  const [root] = currentRoots;
   const records = new Map();
   for (const file of earlier) {
     if (file.root !== root) continue;

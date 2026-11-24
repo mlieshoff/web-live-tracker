@@ -1,5 +1,5 @@
 import { searchCaptureDownloads } from "../shared/earlier-captures.mjs";
-import { downloadFile, downloadWithDetails } from "../shared/export.mjs";
+import { confirmDownloadRoot, downloadFile, downloadWithDetails } from "../shared/export.mjs";
 
 export const requestFinished = globalThis.chrome?.devtools?.network?.onRequestFinished;
 export const networkMonitorTip = "";
@@ -17,11 +17,21 @@ export function saveExtensionFile(filename, data) {
 }
 
 export function saveCaptureReport(filename, data) {
-  return downloadWithDetails(globalThis.chrome.downloads, filename, data);
+  return downloadWithDetails(globalThis.chrome.downloads, filename, data, { saveAs: false });
 }
 
-export function openCaptureReport(id) {
-  return globalThis.chrome.downloads.open(id);
+export async function openCaptureReport(id) {
+  const { downloads, runtime, tabs } = globalThis.chrome;
+  try {
+    await downloads.open(id);
+  } catch {
+    const url = runtime.getURL(`shared/report-open.html?id=${id}`);
+    await tabs.create({ url });
+  }
+}
+
+export function resolveDownloadRoot(researchId) {
+  return confirmDownloadRoot(globalThis.chrome.downloads, researchId);
 }
 
 export function findEarlierDownloads(researchId) {

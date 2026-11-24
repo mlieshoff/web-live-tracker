@@ -24,7 +24,7 @@ Requests and responses that Firefox provides are saved automatically with their 
 
 The capture report groups saved files by type and links to the files and raw records. **What needs attention** explains missing files and partial media. Reopen the report from Downloads or find `capture-*.html` in `web-live-tracker/<research-id>/`. Keep it in that folder so the file links work.
 
-To continue a capture, enter the same **Research ID**. After the capture saves a new file, the report automatically links earlier files found in this browser’s Downloads history under `Downloads/web-live-tracker/<research-id>/`. Open the raw records for the earlier capture details. If the browser’s download history was cleared, look for the earlier files in that folder.
+To review a previous capture, enter its **Research ID** and select **Open capture report**. You can do this before starting a new capture. The report automatically links earlier files found in this browser’s Downloads history under `Downloads/web-live-tracker/<research-id>/`. Open the raw records for the earlier capture details. If the browser’s download history was cleared, look for the earlier files in that folder.
 
 ## Build the ZIP
 
