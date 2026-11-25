@@ -239,7 +239,7 @@ export function captureReport({ researchId, startedAt, records, unreadable = 0, 
 <title>${escapeHtml(researchId)} · ${messages.title}</title>
 <style>
   :root { color-scheme: light dark; font: 16px/1.55 system-ui, sans-serif; }
-  body { max-width: 54rem; padding: 1.5rem; margin: auto; overflow-wrap: anywhere; }
+  body { box-sizing: border-box; max-width: 100rem; padding: clamp(.75rem, 2vw, 1.5rem); margin: auto; overflow-wrap: anywhere; }
   nav { display: flex; flex-wrap: wrap; gap: 1rem; }
   section { border-top: 1px solid GrayText; margin-top: 2rem; }
   li, details { margin-block: .55rem; }
