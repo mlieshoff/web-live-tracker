@@ -23,6 +23,7 @@ const reportError = document.querySelector("#report-error");
 const runtime = (globalThis.browser ?? globalThis.chrome).runtime;
 let pickerUrl;
 let readyReport;
+let selectedReportFolder;
 let displayedReport;
 let displayedErrors;
 let lastStatus;
@@ -153,6 +154,7 @@ function onStatus(snapshot) {
 const capture = createLiveCapture({
   requestFinished, writeFile: saveExtensionFile, writeReport: saveCaptureReport,
   readEarlierFolder: readGrantedCaptureDirectory, readResponseContent, onStatus,
+  getReportLanguage: () => language,
 });
 
 async function showReport(report) {
@@ -177,7 +179,7 @@ async function prepareSelectedReport(id, entries) {
 
 openReport.addEventListener("click", async () => {
   const id = researchId.value;
-  if (readyReport?.researchId === id && !readyReport.needsFolder) {
+  if (readyReport?.researchId === id && !readyReport.needsFolder && readyReport.language === language) {
     await showReport(readyReport);
     return;
   }
@@ -192,7 +194,9 @@ openReport.addEventListener("click", async () => {
   clearResearchIdError();
   openReport.disabled = true;
   try {
-    const entries = await readGrantedCaptureDirectory(id).catch(() => null);
+    const entries = selectedReportFolder?.id === id
+      ? selectedReportFolder.entries
+      : await readGrantedCaptureDirectory(id).catch(() => null);
     if (researchId.value !== id || researchId.disabled) return;
     if (entries !== null) {
       await prepareSelectedReport(id, entries);
@@ -214,6 +218,7 @@ runtime.onMessage.addListener((message, sender, sendResponse) => {
       researchId.disabled || message.researchId !== researchId.value || !Array.isArray(message.entries)) return;
 
   pickerUrl = undefined;
+  selectedReportFolder = { id: message.researchId, entries: message.entries };
   prepareSelectedReport(message.researchId, message.entries).then(sendResponse, () => sendResponse(false));
   return true;
 });
@@ -236,6 +241,7 @@ form.addEventListener("submit", (event) => {
   try {
     pickerUrl = undefined;
     capture.start(researchId.value);
+    selectedReportFolder = undefined;
     showSavePath(researchId.value);
     clearResearchIdError();
     if (!stop.disabled) stop.focus();

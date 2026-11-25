@@ -227,7 +227,7 @@ test("stop saves one report after the raw files and links to their final names a
     [...downloads.keys()].sort());
   assert.match(html, /response%20%232\.txt/);
   assert.deepEqual(lastStatus.report, {
-    state: "ready", researchId: "study", historyOnly: false, needsFolder: false, id: 7, filename: path.split("/").at(-1),
+    state: "ready", researchId: "study", historyOnly: false, needsFolder: false, language: "en", id: 7, filename: path.split("/").at(-1),
   });
 });
 
@@ -452,4 +452,26 @@ test("partial response reuse requires a known matching range and matching bytes"
   await capture.stop();
 
   assert.deepEqual(written, ["first", "other-range", "different-bytes", "unknown-1", "unknown-2", "full"]);
+});
+
+test("a stopped capture and a rebuilt report use the language selected at each save", async () => {
+  let language = "de";
+  const reports = [];
+  const capture = createLiveCapture({
+    requestFinished: { addListener() {}, removeListener() {} },
+    writeFile: async () => {},
+    writeReport: async (path, file) => {
+      reports.push((await file.text()).match(/<html lang="([^"]+)"/)[1]);
+      return { id: reports.length, filename: path.split("/").at(-1) };
+    },
+    getReportLanguage: () => language,
+    onStatus() {},
+  });
+
+  capture.start("study");
+  const stopped = await capture.stop();
+  language = "en";
+  const rebuilt = await capture.prepareReport("study", []);
+
+  assert.deepEqual([stopped.language, rebuilt.language, reports], ["de", "en", ["de", "en"]]);
 });

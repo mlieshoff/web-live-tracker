@@ -81,3 +81,28 @@ test("report previews use local files, skip unsupported visual formats, and appe
   assert.match(html, /href="[^"]*song\/response\.mp3"/);
   assert.match(html, /script-src|default-src 'none'/);
 });
+
+test("the German report translates navigation, saved files and warnings while preserving file links", async () => {
+  const date = new Date("2026-01-01T10:00:00Z");
+  const folder = "web-live-tracker/study/2026-01-01/example.test/video";
+  const metadata = { timestamp: date.toISOString(), url: "https://example.test/video", method: "GET", status: 206 };
+  const html = await captureReport({
+    researchId: "study", startedAt: date, language: "de", unreadable: 2, folderNotSelected: true,
+    records: [{
+      earlier: true, metadata, indexPath: `${folder}/exchange.json`,
+      request: { status: "missing-from-folder" },
+      response: { status: "saved", path: `${folder}/response.mp4` },
+    }, {
+      metadata, error: "The files could not be prepared for saving.",
+    }],
+  }).text();
+
+  const expected = [
+    '<html lang="de">', "<h1>study · Aufzeichnungsbericht</h1>", "1 Datei gespeichert",
+    'aria-label="Berichtsabschnitte"', "<h3>Audio und Video</h3>", "Frühere Aufzeichnung",
+    "Unvollständige Datei", "Rohdatensatz öffnen (JSON)", "2 Rohdatensätze konnten nicht gelesen werden.",
+    "Die frühere Datei fehlt im Rechercheordner.", "Die Dateien konnten nicht zum Speichern vorbereitet werden.",
+    'href="./2026-01-01/example.test/video/response.mp4"',
+  ];
+  assert.deepEqual(expected.filter((text) => !html.includes(text)), []);
+});

@@ -87,6 +87,7 @@ const germanDiagnostics = new Map([
   ["The browser rejected the download filename.", "Der Browser hat den Dateinamen des Downloads abgelehnt."],
   ["The download failed to start. Check your browser’s downloads.", "Der Download konnte nicht gestartet werden. Prüfe die Downloads deines Browsers."],
   ["The browser could not save the file. Check your browser’s downloads.", "Der Browser konnte die Datei nicht speichern. Prüfe die Downloads deines Browsers."],
+  ["The files could not be prepared for saving.", "Die Dateien konnten nicht zum Speichern vorbereitet werden."],
   ["This exchange could not be prepared for saving.", "Dieser Vorgang konnte nicht zum Speichern vorbereitet werden."],
   ["The capture report could not be saved.", "Der Aufzeichnungsbericht konnte nicht gespeichert werden."],
   ["The file could not be saved.", "Die Datei konnte nicht gespeichert werden."],
