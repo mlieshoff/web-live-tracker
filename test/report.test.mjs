@@ -107,7 +107,7 @@ test("the German report translates navigation, saved files and warnings while pr
   assert.deepEqual(expected.filter((text) => !html.includes(text)), []);
 });
 
-test("captureReport sorts each file table A–Z by displayed name regardless of case", async () => {
+test("captureReport sorts each file gallery and table A–Z by displayed name regardless of case", async () => {
   const startedAt = new Date("2026-01-01T10:00:00Z");
   const categories = [
     ["images", "png"],
@@ -131,15 +131,20 @@ test("captureReport sorts each file table A–Z by displayed name regardless of 
 
   const html = await captureReport({ researchId: "study", startedAt, records }).text();
 
-  const tables = [...html.matchAll(/<table aria-labelledby="files-([^"]+)"><thead>.*?<tbody>(.*?)<\/tbody><\/table>/gs)];
+  const savedFiles = html.split('<section id="files">')[1].split("</section>")[0];
+  const groups = [...savedFiles.matchAll(/<(ul class="file-gallery" role="list"|table) aria-labelledby="files-([^"]+)">(.*?)(?:<\/ul>|<\/table>)/gs)];
   assert.deepEqual(
-    tables.map(([, category, rows]) => [
+    groups.map(([, element, category, entries]) => [
       category,
-      [...rows.matchAll(/<tr><td>.*?>([^<>]+) · example\.test \(received\)<\/a><\/td><td><a href="#exchange-\d+">Capture details<\/a><\/td><\/tr>/gs)]
-        .map(([, name]) => name),
+      element.startsWith("ul") ? "gallery" : "table",
+      [...entries.matchAll(/>([^<>]+) · example\.test \(received\)<\/a>/g)].map(([, name]) => name),
+      [...entries.matchAll(/href="#exchange-\d+">Capture details<\/a>/g)].length,
     ]),
     categories.map(([category, extension]) => [
-      category, [`Apple.${extension}`, `banana.${extension}`, `Zebra.${extension}`],
+      category,
+      ["images", "media"].includes(category) ? "gallery" : "table",
+      [`Apple.${extension}`, `banana.${extension}`, `Zebra.${extension}`],
+      3,
     ]),
   );
 });

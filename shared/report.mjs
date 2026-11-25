@@ -28,7 +28,7 @@ function fileLink(path, label, preview) {
   return newTabLink(fileHref(path), label, preview);
 }
 
-function fileCell(file, caption, preview, svgViews, messages) {
+function fileEntryLink(file, caption, preview, svgViews, messages) {
   const view = file.svg && svgViews.get(file.path);
   if (view) return newTabLink(`#${view}`, caption);
   if (!file.svg || !preview) return fileLink(file.path, caption, preview);
@@ -131,10 +131,11 @@ export function captureReport({ researchId, startedAt, records, unreadable = 0, 
           const preview = previewed.has(file.path) ? "" : mediaPreview(file, direction === "response" && partial);
           if (preview) previewed.add(file.path);
           const fileDetails = [badges, earlierLabel, details].filter(Boolean).join(" · ");
-          const link = fileCell(file, caption, preview, svgViews, messages);
+          const link = fileEntryLink(file, caption, preview, svgViews, messages);
           groupedFiles.get(fileGroup(file)).push({
             name: resource ?? host,
-            row: `<tr><td>${link}</td><td>${fileDetails}</td></tr>`,
+            link,
+            details: fileDetails,
           });
           saved += 1;
         } else if (file.status !== "absent") {
@@ -168,11 +169,17 @@ export function captureReport({ researchId, startedAt, records, unreadable = 0, 
   const categories = groups
     .filter((group) => groupedFiles.get(group).length > 0)
     .map((group) => {
-      const rows = groupedFiles.get(group)
-        .sort((left, right) => fileOrder.compare(left.name, right.name))
-        .map(({ row }) => row)
-        .join("");
-      return `<h3 id="files-${group}">${messages[group]}</h3><table aria-labelledby="files-${group}"><thead><tr><th scope="col">${messages.file}</th><th scope="col">${messages.captureDetails}</th></tr></thead><tbody>${rows}</tbody></table>`;
+      const files = groupedFiles.get(group)
+        .sort((left, right) => fileOrder.compare(left.name, right.name));
+      const heading = `<h3 id="files-${group}">${messages[group]}</h3>`;
+      if (group === "images" || group === "media") {
+        const tiles = files.map(({ link, details }) =>
+          `<li>${link}<div class="gallery-details">${details}</div></li>`
+        ).join("");
+        return `${heading}<ul class="file-gallery" role="list" aria-labelledby="files-${group}">${tiles}</ul>`;
+      }
+      const rows = files.map(({ link, details }) => `<tr><td>${link}</td><td>${details}</td></tr>`).join("");
+      return `${heading}<table aria-labelledby="files-${group}"><thead><tr><th scope="col">${messages.file}</th><th scope="col">${messages.captureDetails}</th></tr></thead><tbody>${rows}</tbody></table>`;
     })
     .join("");
 
@@ -191,6 +198,22 @@ export function captureReport({ researchId, startedAt, records, unreadable = 0, 
   summary { cursor: pointer; }
   table { width: 100%; border-collapse: collapse; }
   th, td { border-bottom: 1px solid GrayText; padding: .55rem; text-align: start; vertical-align: top; }
+  .file-gallery {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 11rem), 1fr));
+    gap: 1rem;
+    list-style: none;
+    padding: 0;
+  }
+  .file-gallery > li {
+    min-width: 0;
+    margin: 0;
+    padding: .75rem;
+    border: 1px solid GrayText;
+    border-radius: .5rem;
+  }
+  .file-gallery .preview-link { display: block; }
+  .gallery-details { margin-top: .35rem; font-size: .875rem; }
   .preview-link { display: inline-block; max-width: 100%; }
   .thumbnail {
     display: block;
@@ -203,6 +226,7 @@ export function captureReport({ researchId, startedAt, records, unreadable = 0, 
     object-fit: contain;
     pointer-events: none;
   }
+  .file-gallery .thumbnail { box-sizing: border-box; width: 100%; height: 7rem; }
   :target { outline: 2px solid currentColor; outline-offset: .25rem; }
   .svg-view-actions { display: none; }
   main:has(.svg-view:target) { visibility: hidden; }
