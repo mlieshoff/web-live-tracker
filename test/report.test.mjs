@@ -54,31 +54,51 @@ test("an empty capture can still produce a readable report", async () => {
   assert.match(html, /No completed requests were recorded/);
 });
 
-test("report previews use local files, skip unsupported visual formats, and appear once per saved file", async () => {
+test("report players use local files and appear once per eligible saved media file", async () => {
   const root = "web-live-tracker/study/2026-01-01/example.test/media";
   const date = new Date("2026-01-01T10:00:00Z");
-  function record(resource, file, status = 200) {
+  function record(resource, file, { status = 200, mediaType, source, responseRange, size } = {}) {
     return {
-      metadata: { timestamp: date.toISOString(), url: `https://example.test/${resource}`, method: "GET", status },
+      metadata: { timestamp: date.toISOString(), url: `https://example.test/${resource}`, method: "GET", status, mediaType, responseRange },
       indexPath: `${root}/${resource}/exchange.json`,
       request: { status: "absent", path: null },
-      response: { status: "saved", path: `${root}/${file}` },
+      response: { status: "saved", path: `${root}/${file}`, source, size },
     };
   }
   const records = [
     record("photo", "photo/response (1).png"),
     record("repeated-photo", "photo/response (1).png"),
+    record("full-range", "full-range/response.mp4", { status: 206, responseRange: "bytes 0-99/100", size: 100 }),
     record("movie", "movie/response.webm"),
-    record("partial-movie", "partial/response.webm", 206),
+    record("repeated-movie", "movie/response.webm"),
+    record("partial-movie", "partial/response.webm", { status: 206 }),
+    record("partial-song", "partial-song/response.mp3", { status: 206, responseRange: "bytes 0-99/200", size: 100 }),
+    record("truncated", "truncated/response.mp4", { status: 206, responseRange: "bytes 0-99/100", size: 99 }),
     record("song", "song/response.mp3"),
+    record("voice", "voice/response.webm", { mediaType: "audio/webm; codecs=opus" }),
+    record("refetched", "refetched/response (1).mp4", { status: 206, source: "refetched" }),
+    record("transport", "transport/response.ts"),
   ];
   const html = await captureReport({ researchId: "study", startedAt: date, records }).text();
 
   assert.equal((html.match(/<img class="thumbnail"/g) ?? []).length, 1);
   assert.match(html, /<img class="thumbnail" src="[^"]*photo\/response%20\(1\)\.png"/);
-  assert.match(html, /<video class="thumbnail" src="[^"]*movie\/response\.webm"[^>]*preload="metadata"/);
-  assert.doesNotMatch(html, /<video [^>]*partial\/|<video [^>]*song\/|autoplay|src="https?:/);
-  assert.match(html, /href="[^"]*song\/response\.mp3"/);
+  const players = [...html.matchAll(/<(audio|video) class="media-player" src="\.\/([^"]+)" controls preload="none" aria-label="([^"]+)"><\/\1>/g)];
+  assert.deepEqual(players.map(([, tag, path, label]) => [tag, path.split("/").slice(-2).join("/"), label]), [
+    ["video", "full-range/response.mp4", "full-range · example.test (received)"],
+    ["video", "movie/response.webm", "movie · example.test (received)"],
+    ["video", "partial/response.webm", "partial-movie · example.test (received)"],
+    ["audio", "partial-song/response.mp3", "partial-song · example.test (received)"],
+    ["video", "refetched/response%20(1).mp4", "refetched · example.test (received)"],
+    ["audio", "song/response.mp3", "song · example.test (received)"],
+    ["video", "truncated/response.mp4", "truncated · example.test (received)"],
+    ["audio", "voice/response.webm", "voice · example.test (received)"],
+  ]);
+  assert.equal((html.match(/<(?:audio|video)\b/g) ?? []).length, players.length);
+  assert.doesNotMatch(html, /<a\b[^>]*>(?:(?!<\/a>)[\s\S])*?<(?:audio|video)\b|autoplay|src="https?:/);
+  for (const file of ["movie/response.webm", "song/response.mp3", "partial-song/response.mp3", "partial/response.webm", "transport/response.ts"]) {
+    assert.ok(html.includes(`href="./2026-01-01/example.test/media/${file}"`));
+  }
   assert.match(html, /script-src|default-src 'none'/);
 });
 
@@ -91,7 +111,7 @@ test("the German report translates navigation, saved files and warnings while pr
     records: [{
       earlier: true, metadata, indexPath: `${folder}/exchange.json`,
       request: { status: "missing-from-folder" },
-      response: { status: "saved", path: `${folder}/response.mp4` },
+      response: { status: "saved", path: `${folder}/response.m4a` },
     }, {
       metadata, error: "The files could not be prepared for saving.",
     }],
@@ -102,9 +122,10 @@ test("the German report translates navigation, saved files and warnings while pr
     'aria-label="Berichtsabschnitte"', "<h3 id=\"files-media\">Audio und Video</h3>", "Frühere Aufzeichnung",
     "Unvollständige Datei", "Rohdatensatz öffnen (JSON)", "2 Rohdatensätze konnten nicht gelesen werden.",
     "Die frühere Datei fehlt im Rechercheordner.", "Die Dateien konnten nicht zum Speichern vorbereitet werden.",
-    'href="./2026-01-01/example.test/video/response.mp4"',
+    'href="./2026-01-01/example.test/video/response.m4a"',
   ];
   assert.deepEqual(expected.filter((text) => !html.includes(text)), []);
+  assert.match(html, /<li><a[^>]*href="[^"]*response\.m4a"[^>]*>[^<]+<\/a><audio[^>]*src="[^"]*response\.m4a" controls[^>]*><\/audio><div class="gallery-details">.*Unvollständige Datei · Frühere Aufzeichnung.*<\/li>/);
 });
 
 test("captureReport sorts file galleries, lists, and tables A–Z by displayed name regardless of case", async () => {
