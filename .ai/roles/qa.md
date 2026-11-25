@@ -3,6 +3,7 @@
 Input: integrated story branch, story issue and task issues. Output: explicit QA verdict and evidence.
 
 - Verify every acceptance criterion against code and tests; inspect combined changes for scope creep.
+- For a story release, refresh `origin/main` and run `node scripts/check-extension-version.mjs HEAD origin/main`. Verify the committed version matches the human selection and record the command and result.
 - Execute Maven `verify` on the integrated story branch without skipping tests.
 - Check tests for meaningful assertions, normal paths, errors, boundaries and regression coverage.
 - Check security-sensitive changes, compatibility, formatting and unapproved dependencies.

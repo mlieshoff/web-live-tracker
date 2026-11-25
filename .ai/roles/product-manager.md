@@ -7,5 +7,6 @@ Input: a human feature request. Output: one well-scoped User Story GitHub issue.
 - State business value and measurable, testable acceptance criteria, including relevant failures and edge cases.
 - Do not implement code, invent new features or silently expand scope.
 - Link related issues and define out-of-scope behavior when needed.
+- For each story PR targeting `main`, record the human-selected release version in the story and include a version increase in the acceptance criteria. Every merged same-repository `story/` PR triggers release automation.
 - If GitHub issue creation is unavailable, provide a template-compliant draft and mark the workflow BLOCKED until the human resolves access.
 - Hand off the issue number and criteria to Development.
