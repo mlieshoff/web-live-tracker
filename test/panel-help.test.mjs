@@ -53,9 +53,10 @@ async function verifyPanelSwitching(browserName) {
   const status = elements.get("capture-status");
   const error = elements.get("research-id-error");
   const networkTip = elements.get("network-monitor-tip");
-  assert.deepEqual([networkTip.hidden, networkTip.textContent], browserName === "firefox"
-    ? [false, "Öffne in Firefox einmal den Reiter „Netzwerkanalyse“ und kehre dann zum Starten der Aufzeichnung hierher zurück."]
-    : [true, ""]);
+  assert.equal(networkTip.hidden, false);
+  assert.match(networkTip.textContent, browserName === "firefox"
+    ? /Firefox.*Netzwerkanalyse.*HTTP-Cache deaktivieren/
+    : /Chrome.*Netzwerk.*Cache deaktivieren/);
 
   help.dispatchEvent(new Event("click"));
   assert.deepEqual([
@@ -72,6 +73,9 @@ async function verifyPanelSwitching(browserName) {
   language.value = "en";
   language.dispatchEvent(new Event("change"));
   assert.match(error.textContent, /^Use 1–64/);
+  assert.match(networkTip.textContent, browserName === "firefox"
+    ? /Firefox.*Network tab.*Disable HTTP Cache/
+    : /Chrome.*Network tab.*Disable cache/);
   assert.deepEqual(
     [...tooltips].filter(([key, element]) => {
       const title = element.getAttribute("title");

@@ -26,7 +26,10 @@ export const panelMessages = {
     reportSaveFailed: (detail) => `The report could not be saved. ${detail}`,
     reportOpenFailed: (filename) => `Could not open the report. Open ${filename} from your browser’s Downloads.`,
     pickerOpenFailed: "Could not open the research folder picker. Try again.",
-    networkMonitorTip: "In Firefox, open the Network tab once, then return here to start capture.",
+    networkMonitorTip: {
+      chrome: "Open Chrome’s Network tab, then return here to start capture. For a more complete recording, enable Disable cache in the Network tab.",
+      firefox: "Open Firefox’s Network tab once, then return here to start capture. For a more complete recording, enable Disable HTTP Cache in the Network tab.",
+    },
     saveErrors: (count, failed) => `Save errors (${count} in ${failed} ${failed === 1 ? "exchange" : "exchanges"})`,
     saveErrorLimit: (shown, total) => `Showing the latest ${shown} of ${total} errors.`,
   },
@@ -57,7 +60,10 @@ export const panelMessages = {
     reportSaveFailed: (detail) => `Der Bericht konnte nicht gespeichert werden. ${detail}`,
     reportOpenFailed: (filename) => `Der Bericht konnte nicht geöffnet werden. Öffne ${filename} über die Downloads deines Browsers.`,
     pickerOpenFailed: "Die Auswahl des Rechercheordners konnte nicht geöffnet werden. Versuche es erneut.",
-    networkMonitorTip: "Öffne in Firefox einmal den Reiter „Netzwerkanalyse“ und kehre dann zum Starten der Aufzeichnung hierher zurück.",
+    networkMonitorTip: {
+      chrome: "Öffne in Chrome den Reiter „Netzwerk“ und kehre zum Starten der Aufzeichnung hierher zurück. Aktiviere dort „Cache deaktivieren“, um mehr Anfragen zu erfassen.",
+      firefox: "Öffne in Firefox einmal den Reiter „Netzwerkanalyse“ und kehre zum Starten der Aufzeichnung hierher zurück. Aktiviere dort „HTTP-Cache deaktivieren“, um mehr Anfragen zu erfassen.",
+    },
     saveErrors: (count, failed) => `Speicherfehler (${count} in ${failed} ${failed === 1 ? "Vorgang" : "Vorgängen"})`,
     saveErrorLimit: (shown, total) => `Die letzten ${shown} von ${total} Fehlern werden angezeigt.`,
   },

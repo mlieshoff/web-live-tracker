@@ -2,7 +2,7 @@ import { readGrantedCaptureDirectory } from "./capture-folder.mjs";
 import { validateResearchId } from "./export.mjs";
 import { createLiveCapture } from "./live-capture.mjs";
 import { panelMessages, panelTooltips, readPanelLanguage, savePanelLanguage, translateDiagnostic } from "./panel-language.mjs";
-import { networkMonitorTip, openCaptureFolderPicker, openCaptureReport, readResponseContent, requestFinished, saveCaptureReport, saveExtensionFile } from "../browser/browser-api.mjs";
+import { browserName, openCaptureFolderPicker, openCaptureReport, readResponseContent, requestFinished, saveCaptureReport, saveExtensionFile } from "../browser/browser-api.mjs";
 
 const form = document.querySelector("#capture-form");
 const researchId = document.querySelector("#research-id");
@@ -37,7 +37,7 @@ const helpDialog = document.querySelector("#help-dialog");
 let language = readPanelLanguage(localStorage);
 let messages;
 const networkTip = document.querySelector("#network-monitor-tip");
-networkTip.hidden = !networkMonitorTip;
+networkTip.hidden = false;
 
 function showText(element, value) {
   if (element.textContent !== value) {
@@ -79,7 +79,7 @@ function applyLanguage() {
     element.setAttribute("title", tooltip);
     element.setAttribute("aria-description", tooltip);
   }
-  showText(networkTip, networkMonitorTip ? messages.networkMonitorTip : "");
+  showText(networkTip, messages.networkMonitorTip[browserName]);
   showText(idError, hasResearchIdError ? messages.invalidResearchId : "");
   showSavePath(displayedResearchId);
   if (lastStatus) {
