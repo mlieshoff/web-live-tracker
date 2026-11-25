@@ -1,5 +1,7 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import test from "node:test";
+import { runInNewContext } from "node:vm";
 import { captureReport } from "../shared/report.mjs";
 
 test("the report groups saved files, links raw records, and explains incomplete and missing files", async () => {
@@ -249,4 +251,74 @@ test("captureReport collapses multiple earlier captures in one table cell and ke
     singleDisclosure: false,
     singleLinks: ["4"],
   });
+});
+
+test("the report places 20 unique tips in the selected language below the saved files table", async () => {
+  const startedAt = new Date("2026-01-01T10:00:00Z");
+  const records = [{
+    metadata: { timestamp: startedAt.toISOString(), url: "https://example.test/style.css", method: "GET", status: 200 },
+    request: { status: "absent", path: null },
+    response: { status: "saved", path: "web-live-tracker/study/style.css" },
+  }];
+  const localizedTips = [];
+  for (const [language, heading, firstTip] of [
+    ["en", "Tip of the day", /^Use one research ID/],
+    ["de", "Tipp des Tages", /^Verwende eine Recherche-ID/],
+  ]) {
+    const html = await captureReport({ researchId: "study", startedAt, records, language }).text();
+    assert.match(html, /<\/table>\s*<aside class="tip-of-the-day"/);
+    assert.ok(html.includes(`<h3 id="report-tip-heading">${heading}</h3>`));
+    assert.match(html, /<\/aside>\s*<\/section>\s*<section id="issues">/);
+    const [, tipList] = html.match(/<template id="report-tips">(.*?)<\/template>/);
+    const tips = [...tipList.matchAll(/<span>(.*?)<\/span>/g)].map(([, tip]) => tip);
+    assert.equal(new Set(tips).size, 20);
+    assert.equal(tips.length, 20);
+    assert.match(tips[0], firstTip);
+    assert.ok(html.includes(`<p id="report-tip">${tips[0]}</p>`));
+    localizedTips.push(tips);
+  }
+  assert.equal(localizedTips[0].some((tip) => localizedTips[1].includes(tip)), false);
+});
+
+test("the downloaded report authorizes its tip script and rotates without consecutive repeats", async () => {
+  const html = await captureReport({
+    researchId: "study", startedAt: new Date("2026-01-01T10:00:00Z"), records: [],
+  }).text();
+  const [, script] = html.match(/<script>([\s\S]+?)<\/script>/);
+  const hash = createHash("sha256").update(script).digest("base64");
+  assert.ok(html.includes(`default-src 'none'; script-src 'sha256-${hash}';`));
+  assert.equal((html.match(/<script\b/g) ?? []).length, 1);
+
+  const output = { textContent: "" };
+  const tips = ["First", "Second", "Third"].map((textContent) => ({ textContent }));
+  let rotate;
+  const randomValues = [0.999, 0.999, 0.999, 0];
+  runInNewContext(script, {
+    document: {
+      querySelector(selector) {
+        assert.ok(["#report-tip", "#report-tips"].includes(selector));
+        return selector === "#report-tip" ? output : {
+          content: {
+            querySelectorAll(tag) {
+              assert.equal(tag, "span");
+              return tips;
+            },
+          },
+        };
+      },
+    },
+    Math: Object.assign(Object.create(Math), { random: () => randomValues.shift() }),
+    setInterval(callback, delay) {
+      assert.equal(delay, 60_000);
+      rotate = callback;
+    },
+  });
+
+  assert.equal(output.textContent, "Third");
+  rotate();
+  assert.equal(output.textContent, "Second");
+  rotate();
+  assert.equal(output.textContent, "Third");
+  rotate();
+  assert.equal(output.textContent, "First");
 });
