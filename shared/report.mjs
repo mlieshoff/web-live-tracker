@@ -178,14 +178,13 @@ export function captureReport({ researchId, startedAt, records, unreadable = 0, 
           const savedKey = imageKeysByPath.get(file.path) ?? file.path;
           const entry = savedFiles.get(savedKey) ?? {
             file, name: resource ?? host, caption: `${name} (${label.toLowerCase()})`,
-            partial: isPartial, sources: new Map(), size: file.size,
+            sources: new Map(), size: file.size,
           };
           if (file.svgPreview || (file.svg && !entry.file.svg)) {
             entry.file = { ...file, path: entry.file.path };
           }
           entry.size ??= file.size;
-          if (direction === "response" && !isPartial) entry.mediaType ??= metadata?.mediaType;
-          entry.partial &&= isPartial;
+          if (direction === "response") entry.mediaType ??= metadata?.mediaType;
           const source = entry.sources.get(sourceUrl) ?? [];
           const html = [label, isPartial && messages.partialFile, earlier && messages.earlierCapture, details]
             .filter(Boolean).join(" · ");
@@ -221,10 +220,10 @@ export function captureReport({ researchId, startedAt, records, unreadable = 0, 
   }
 
   let nextView = 0;
-  for (const { file, name, caption, partial, sources, size, mediaType } of savedFiles.values()) {
+  for (const { file, name, caption, sources, size, mediaType } of savedFiles.values()) {
     const group = fileGroup(file);
     const preview = group === "images" ? imagePreview(file) : "";
-    const player = group === "media" && !partial ? mediaPlayer(file, caption, mediaType) : "";
+    const player = group === "media" ? mediaPlayer(file, caption, mediaType) : "";
     const viewId = file.svg && preview ? `svg-view-${++nextView}` : null;
     const link = fileEntryLink(file, caption, preview, viewId, messages);
     const sizeText = Number.isSafeInteger(size) && size >= 0 ? `<div>${escapeHtml(sizeFormat.format(size))}</div>` : "";

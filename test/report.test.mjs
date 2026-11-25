@@ -54,7 +54,7 @@ test("an empty capture can still produce a readable report", async () => {
   assert.match(html, /No completed requests were recorded/);
 });
 
-test("report players use local files and appear once per complete playable capture", async () => {
+test("report players use local files and appear once per eligible saved media file", async () => {
   const root = "web-live-tracker/study/2026-01-01/example.test/media";
   const date = new Date("2026-01-01T10:00:00Z");
   function record(resource, file, { status = 200, mediaType, source, responseRange, size } = {}) {
@@ -87,8 +87,11 @@ test("report players use local files and appear once per complete playable captu
   assert.deepEqual(players.map(([, tag, path, label]) => [tag, path.split("/").slice(-2).join("/"), label]), [
     ["video", "full-range/response.mp4", "full-range · example.test (received)"],
     ["video", "movie/response.webm", "movie · example.test (received)"],
+    ["video", "partial/response.webm", "partial-movie · example.test (received)"],
+    ["audio", "partial-song/response.mp3", "partial-song · example.test (received)"],
     ["video", "refetched/response%20(1).mp4", "refetched · example.test (received)"],
     ["audio", "song/response.mp3", "song · example.test (received)"],
+    ["video", "truncated/response.mp4", "truncated · example.test (received)"],
     ["audio", "voice/response.webm", "voice · example.test (received)"],
   ]);
   assert.equal((html.match(/<(?:audio|video)\b/g) ?? []).length, players.length);
@@ -108,7 +111,7 @@ test("the German report translates navigation, saved files and warnings while pr
     records: [{
       earlier: true, metadata, indexPath: `${folder}/exchange.json`,
       request: { status: "missing-from-folder" },
-      response: { status: "saved", path: `${folder}/response.mp4` },
+      response: { status: "saved", path: `${folder}/response.m4a` },
     }, {
       metadata, error: "The files could not be prepared for saving.",
     }],
@@ -119,9 +122,10 @@ test("the German report translates navigation, saved files and warnings while pr
     'aria-label="Berichtsabschnitte"', "<h3 id=\"files-media\">Audio und Video</h3>", "Frühere Aufzeichnung",
     "Unvollständige Datei", "Rohdatensatz öffnen (JSON)", "2 Rohdatensätze konnten nicht gelesen werden.",
     "Die frühere Datei fehlt im Rechercheordner.", "Die Dateien konnten nicht zum Speichern vorbereitet werden.",
-    'href="./2026-01-01/example.test/video/response.mp4"',
+    'href="./2026-01-01/example.test/video/response.m4a"',
   ];
   assert.deepEqual(expected.filter((text) => !html.includes(text)), []);
+  assert.match(html, /<li><a[^>]*href="[^"]*response\.m4a"[^>]*>[^<]+<\/a><audio[^>]*src="[^"]*response\.m4a" controls[^>]*><\/audio><div class="gallery-details">.*Unvollständige Datei · Frühere Aufzeichnung.*<\/li>/);
 });
 
 test("captureReport sorts file galleries, lists, and tables A–Z by displayed name regardless of case", async () => {
