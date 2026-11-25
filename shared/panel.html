@@ -11,32 +11,52 @@
     <main>
       <header class="panel-header">
         <h1>Web Live Tracker</h1>
-        <p id="capture-status" class="capture-status" data-state="stopped" role="status" tabindex="-1">Capture stopped.</p>
+        <p id="capture-status" data-tooltip="captureStatus" class="capture-status" data-state="stopped" role="status" tabindex="-1">Capture stopped.</p>
       </header>
-      <form id="capture-form" class="capture-form">
-        <label for="research-id">Research ID</label>
-        <input id="research-id" type="text" maxlength="64" autocomplete="off"
+      <div class="panel-tools">
+        <label for="panel-language" data-message="language">Language</label>
+        <select id="panel-language" data-tooltip="language">
+          <option value="en" lang="en">English</option>
+          <option value="de" lang="de">Deutsch</option>
+        </select>
+        <button id="open-help" data-tooltip="help" type="button" aria-label="Help" aria-haspopup="dialog">?</button>
+      </div>
+      <form id="capture-form" class="capture-form" novalidate>
+        <label for="research-id" data-message="researchId">Research ID</label>
+        <input id="research-id" data-tooltip="researchId" type="text" maxlength="64" autocomplete="off"
           spellcheck="false" placeholder="my-first-capture" required aria-describedby="research-id-error">
         <p id="research-id-error" class="error-message" role="alert"></p>
         <div class="capture-actions">
-          <button id="start" type="submit" disabled aria-describedby="save-location">Start capture</button>
-          <button id="stop" type="button" disabled>Stop capture</button>
-          <button id="open-report" type="button" disabled>Open capture report</button>
+          <button id="start" data-tooltip="start" data-message="start" type="submit" disabled aria-describedby="save-location">Start capture</button>
+          <button id="stop" data-tooltip="stop" data-message="stop" type="button" disabled>Stop capture</button>
+          <button id="open-report" data-tooltip="openReport" data-message="openReport" type="button" disabled>Open capture report</button>
         </div>
         <p id="report-error" class="error-message" role="alert"></p>
-        <p id="save-location" class="save-location">Find your files and reports under <code id="save-path">Downloads/web-live-tracker/&lt;research ID&gt;/</code>.</p>
+        <p id="save-location" data-tooltip="saveLocation" class="save-location"><span data-message="saveLocation">Find your files and reports under </span><code id="save-path">Downloads/web-live-tracker/&lt;research ID&gt;/</code>.</p>
         <p id="network-monitor-tip" class="save-location" hidden></p>
       </form>
       <dl class="capture-counts">
-        <div><dt>Requests captured</dt><dd id="captured-count">0</dd></div>
-        <div><dt>Files saved</dt><dd id="saved-count">0</dd></div>
-        <div><dt>Pending exchanges</dt><dd id="pending-count">0</dd></div>
+        <div data-tooltip="capturedCount"><dt data-message="capturedCount">Requests captured</dt><dd id="captured-count">0</dd></div>
+        <div data-tooltip="savedCount"><dt data-message="savedCount">Files saved</dt><dd id="saved-count">0</dd></div>
+        <div data-tooltip="pendingCount"><dt data-message="pendingCount">Pending exchanges</dt><dd id="pending-count">0</dd></div>
       </dl>
       <details id="save-errors" class="save-errors" hidden>
-        <summary id="save-error-summary">Save errors</summary>
+        <summary id="save-error-summary" data-tooltip="saveErrors">Save errors</summary>
         <p id="save-error-limit" class="save-error-limit" hidden></p>
         <ul id="save-error-list"></ul>
       </details>
+      <dialog id="help-dialog" aria-labelledby="help-title">
+        <h2 id="help-title" data-message="helpTitle">Capture guide</h2>
+        <ol>
+          <li data-message="helpStart">Enter a research ID and choose Start capture. Use the inspected tab to generate the requests you want to save.</li>
+          <li data-message="helpStop">Choose Stop capture and wait for the files and report to finish saving.</li>
+          <li data-message="helpFiles">Find your files in your browser’s Downloads folder under web-live-tracker, then your research ID. Capture files are grouped by date.</li>
+          <li data-message="helpReport">Choose Open capture report. If prompted, select your research folder to include earlier captures.</li>
+        </ol>
+        <form method="dialog">
+          <button type="submit" data-message="helpClose" autofocus>Close</button>
+        </form>
+      </dialog>
     </main>
   </body>
 </html>

@@ -1,9 +1,20 @@
+import { readPanelLanguage } from "./panel-language.mjs";
+import { reportMessages } from "./report-language.mjs";
+
 const downloads = (globalThis.browser ?? globalThis.chrome).downloads;
 const button = document.querySelector("#open-report");
 const showButton = document.querySelector("#show-report");
 const message = document.querySelector("#report-message");
 const value = new URLSearchParams(location.search).get("id");
 const id = Number(value);
+const language = readPanelLanguage(localStorage);
+const messages = reportMessages[language];
+document.documentElement.lang = language;
+document.title = messages.openTitle;
+document.querySelector("h1").textContent = messages.title;
+message.textContent = messages.finding;
+button.textContent = messages.openDownload;
+showButton.textContent = messages.showInFolder;
 
 try {
   const [item] = value && Number.isSafeInteger(id) ? await downloads.search({ id }) : [];
@@ -18,19 +29,19 @@ try {
   showButton.addEventListener("click", async () => {
     try {
       await downloads.show(id);
-      message.textContent = `Open ${filename} from the folder.`;
+      message.textContent = messages.openFromFolder(filename);
     } catch {
-      message.textContent = `Could not show the file. Open ${filename} from your browser’s Downloads.`;
+      message.textContent = messages.showFailed(filename);
     }
   });
   button.addEventListener("click", async () => {
     try {
       await downloads.open(id);
-      message.textContent = "Your browser asked your system to open the report. If it didn’t open, select Show report in folder.";
+      message.textContent = messages.openRequested;
     } catch {
-      message.textContent = "Could not open the report. Select Show report in folder.";
+      message.textContent = messages.openFailed;
     }
   });
 } catch {
-  message.textContent = "Could not find the report. Check your browser’s Downloads.";
+  message.textContent = messages.notFound;
 }

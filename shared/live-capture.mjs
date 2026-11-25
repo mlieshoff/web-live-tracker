@@ -8,7 +8,7 @@ import { createSvgPreviewReader } from "./svg-preview.mjs";
 
 const errorHistoryLimit = 30;
 
-export function createLiveCapture({ requestFinished, writeFile, writeReport, readEarlierFolder, readResponseContent, onStatus, now = Date.now }) {
+export function createLiveCapture({ requestFinished, writeFile, writeReport, readEarlierFolder, readResponseContent, onStatus, getReportLanguage = () => "en", now = Date.now }) {
   let researchId;
   let active = false;
   let startedAt;
@@ -87,12 +87,13 @@ export function createLiveCapture({ requestFinished, writeFile, writeReport, rea
         }
         const needsFolder = Boolean(readEarlierFolder && entries == null);
         const earlier = earlierCaptureRecords(entries ?? [], id, currentRecords);
+        const language = getReportLanguage();
         const file = captureReport({
           researchId: id, startedAt: reportDate, records: [...earlier.records, ...currentRecords],
-          unreadable: earlier.unreadable, folderUnavailable, folderNotSelected: needsFolder, historyOnly,
+          unreadable: earlier.unreadable, folderUnavailable, folderNotSelected: needsFolder, historyOnly, language,
         });
         const result = await writeReport(`${folder}/capture-${stamp}.html`, file);
-        report = { state: "ready", researchId: id, historyOnly, needsFolder, ...result };
+        report = { state: "ready", researchId: id, historyOnly, needsFolder, language, ...result };
       } catch (error) {
         report = {
           state: "failed",

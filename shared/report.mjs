@@ -1,4 +1,7 @@
-const groups = ["Images", "Audio and video", "Documents", "Other files"];
+import { translateDiagnostic } from "./panel-language.mjs";
+import { reportMessages } from "./report-language.mjs";
+
+const groups = ["images", "media", "documents", "otherFiles"];
 const imageExtensions = new Set(["avif", "bmp", "gif", "jpg", "png", "tiff", "webp"]);
 const videoPreviewExtensions = new Set(["m4v", "mov", "mp4", "ogv", "webm"]);
 const mediaExtensions = new Set(["aac", "flac", "m4a", "m4v", "mkv", "mov", "mp3", "mp4", "mpeg", "ogg", "ogv", "ts", "wav", "webm"]);
@@ -25,7 +28,7 @@ function fileLink(path, label, preview) {
   return newTabLink(fileHref(path), label, preview);
 }
 
-function fileRow(file, caption, suffix, preview, svgViews) {
+function fileRow(file, caption, suffix, preview, svgViews, messages) {
   const view = file.svg && svgViews.get(file.path);
   if (view) return `<li>${newTabLink(`#${view}`, caption)}${suffix}</li>`;
   if (!file.svg || !preview) return `<li>${fileLink(file.path, caption, preview)}${suffix}</li>`;
@@ -35,8 +38,8 @@ function fileRow(file, caption, suffix, preview, svgViews) {
   return `<li id="${id}" class="svg-view">
     ${newTabLink(`#${id}`, caption, preview)}<span class="file-details">${suffix}</span>
     <div class="svg-view-actions">
-      <a href="#files">Back to report</a>
-      ${fileLink(file.path, "Open saved file")}
+      <a href="#files">${messages.back}</a>
+      ${fileLink(file.path, messages.openSavedFile)}
     </div>
   </li>`;
 }
@@ -47,10 +50,10 @@ function fileExtension(file) {
 
 function fileGroup(file) {
   const extension = fileExtension(file);
-  if (file.svg || imageExtensions.has(extension)) return "Images";
-  if (mediaExtensions.has(extension)) return "Audio and video";
-  if (documentExtensions.has(extension)) return "Documents";
-  return "Other files";
+  if (file.svg || imageExtensions.has(extension)) return "images";
+  if (mediaExtensions.has(extension)) return "media";
+  if (documentExtensions.has(extension)) return "documents";
+  return "otherFiles";
 }
 
 function mediaPreview(file, partial) {
@@ -72,26 +75,28 @@ function mediaPreview(file, partial) {
   return "";
 }
 
-function fileDescription(file, direction) {
-  if (file.path) return fileLink(file.path, direction === "response" ? "Open received file" : "Open sent file");
+function fileDescription(file, direction, messages) {
+  if (file.path) return fileLink(file.path, direction === "response" ? messages.openReceivedFile : messages.openSentFile);
   if (file.status === "absent") {
-    return direction === "response" ? "The website did not send a file." : "The browser did not send a file.";
+    return direction === "response" ? messages.responseAbsent : messages.requestAbsent;
   }
-  if (file.status === "missing-from-folder") return "The earlier file is missing from the research folder.";
-  if (file.status === "saved") return "The browser provided the file, but it could not be saved.";
-  return "The browser could not provide this file.";
+  if (file.status === "missing-from-folder") return messages.fileMissing;
+  if (file.status === "saved") return messages.fileUnsaved;
+  return messages.fileUnavailable;
 }
 
-export function captureReport({ researchId, startedAt, records, unreadable = 0, folderUnavailable = false, folderNotSelected = false, historyOnly = false }) {
+export function captureReport({ researchId, startedAt, records, unreadable = 0, folderUnavailable = false, folderNotSelected = false, historyOnly = false, language = "en" }) {
+  const locale = language === "de" ? "de" : "en";
+  const messages = reportMessages[locale];
   const groupedFiles = new Map(groups.map((group) => [group, []]));
   const issues = [];
   if (folderUnavailable) {
-    issues.push("<li>Earlier files could not be read. Check the research folder in Downloads.</li>");
+    issues.push(`<li>${messages.folderUnavailable}</li>`);
   } else if (folderNotSelected) {
-    issues.push("<li>Use Open capture report in Web Live Tracker to choose the research folder and include earlier files.</li>");
+    issues.push(`<li>${messages.folderNotSelected}</li>`);
   }
   if (unreadable) {
-    issues.push(`<li>${unreadable} raw ${unreadable === 1 ? "record could" : "records could"} not be read.</li>`);
+    issues.push(`<li>${messages.unreadable(unreadable)}</li>`);
   }
   const exchanges = [];
   const sites = new Set();
@@ -106,66 +111,66 @@ export function captureReport({ researchId, startedAt, records, unreadable = 0, 
     const resource = url ? url.pathname.split("/").filter(Boolean).at(-1) : record.name;
     sites.add(host);
     const name = resource ? `${resource} · ${host}` : host;
-    const details = `<a href="#exchange-${index + 1}">Capture details</a>`;
+    const details = `<a href="#exchange-${index + 1}">${messages.captureDetails}</a>`;
     const partial = metadata?.status === 206 && response?.source !== "refetched";
     const notes = [];
 
     if (error) {
-      issues.push(`<li>${escapeHtml(name)}. ${escapeHtml(error)} ${details}</li>`);
+      issues.push(`<li>${escapeHtml(name)}. ${escapeHtml(translateDiagnostic(locale, error))} ${details}</li>`);
     } else {
       for (const [direction, file] of [["request", request], ["response", response]]) {
         if (file.status === "unknown") continue;
-        const description = fileDescription(file, direction);
-        const label = direction === "response" ? "Received" : "Sent";
+        const description = fileDescription(file, direction, messages);
+        const label = direction === "response" ? messages.received : messages.sent;
         notes.push(`<li>${label} — ${description}</li>`);
         if (file.path) {
-          const badges = direction === "response" && partial ? " · Partial file" : "";
+          const badges = direction === "response" && partial ? ` · ${messages.partialFile}` : "";
           const caption = `${name} (${label.toLowerCase()})`;
-          const earlierLabel = earlier ? " · Earlier capture" : "";
+          const earlierLabel = earlier ? ` · ${messages.earlierCapture}` : "";
           const preview = previewed.has(file.path) ? "" : mediaPreview(file, direction === "response" && partial);
           if (preview) previewed.add(file.path);
           const suffix = `${badges}${earlierLabel} · ${details}`;
-          groupedFiles.get(fileGroup(file)).push(fileRow(file, caption, suffix, preview, svgViews));
+          groupedFiles.get(fileGroup(file)).push(fileRow(file, caption, suffix, preview, svgViews, messages));
           saved += 1;
         } else if (file.status !== "absent") {
           issues.push(`<li>${escapeHtml(name)} · ${label}. ${description} ${details}</li>`);
         }
       }
       if (partial && response.path) {
-        issues.push(`<li>${fileLink(response.path, name)}. The website sent only part of this file, so it may not open or play in full. ${details}</li>`);
+        issues.push(`<li>${fileLink(response.path, name)}. ${messages.partialWarning} ${details}</li>`);
       }
       if (response.source === "refetched") {
-        notes.push("<li>The file was retrieved in a separate download.</li>");
+        notes.push(`<li>${messages.refetched}</li>`);
       }
       if (!indexPath && !earlier) {
-        issues.push(`<li>${escapeHtml(name)}. The technical record could not be saved. ${details}</li>`);
+        issues.push(`<li>${escapeHtml(name)}. ${messages.rawSaveFailed} ${details}</li>`);
       }
     }
 
-    const raw = indexPath ? fileLink(indexPath, "Open raw record (JSON)") : "";
-    const time = metadata?.timestamp ?? new Date(record.capturedAt).toLocaleDateString();
+    const raw = indexPath ? fileLink(indexPath, messages.openRawRecord) : "";
+    const time = metadata?.timestamp ?? new Date(record.capturedAt).toLocaleDateString(locale);
     const technicalDetails = metadata
-      ? `${escapeHtml(metadata.method)} ${escapeHtml(metadata.url)} · Status ${escapeHtml(metadata.status)}`
-      : "Files saved in this research folder in Downloads.";
+      ? `${escapeHtml(metadata.method)} ${escapeHtml(metadata.url)} · ${messages.status} ${escapeHtml(metadata.status)}`
+      : messages.filesInFolder;
     exchanges.push(`<details>
-      <summary>${escapeHtml(name)} · ${escapeHtml(time)}${earlier ? " · Earlier capture" : ""}</summary>
+      <summary>${escapeHtml(name)} · ${escapeHtml(time)}${earlier ? ` · ${messages.earlierCapture}` : ""}</summary>
       <p id="exchange-${index + 1}">${technicalDetails}</p>
-      ${error ? `<p>${escapeHtml(error)}</p>` : `<ul>${notes.join("")}</ul>`}
+      ${error ? `<p>${escapeHtml(translateDiagnostic(locale, error))}</p>` : `<ul>${notes.join("")}</ul>`}
       ${raw}
     </details>`);
   }
 
   const categories = groups
     .filter((group) => groupedFiles.get(group).length > 0)
-    .map((group) => `<h3>${group}</h3><ul>${groupedFiles.get(group).join("")}</ul>`)
+    .map((group) => `<h3>${messages[group]}</h3><ul>${groupedFiles.get(group).join("")}</ul>`)
     .join("");
 
   return new Blob([`<!doctype html>
-<html lang="en">
+<html lang="${locale}">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src file: data:; media-src file:; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'">
-<title>${escapeHtml(researchId)} · Capture report</title>
+<title>${escapeHtml(researchId)} · ${messages.title}</title>
 <style>
   :root { color-scheme: light dark; font: 16px/1.55 system-ui, sans-serif; }
   body { max-width: 54rem; padding: 1.5rem; margin: auto; overflow-wrap: anywhere; }
@@ -228,25 +233,25 @@ export function captureReport({ researchId, startedAt, records, unreadable = 0, 
   }
 </style>
 <main>
-  <h1>${escapeHtml(researchId)} · Capture report</h1>
-  <p>${historyOnly ? "Report created" : "Started"} ${escapeHtml(startedAt.toLocaleString())} · ${saved} ${saved === 1 ? "file" : "files"} saved</p>
+  <h1>${escapeHtml(researchId)} · ${messages.title}</h1>
+  <p>${historyOnly ? messages.created : messages.started} ${escapeHtml(startedAt.toLocaleString(locale))} · ${messages.saved(saved)}</p>
   <p>Downloads/web-live-tracker/${escapeHtml(researchId)}/</p>
-  ${records.some((record) => record.earlier) ? "<p>Includes earlier files saved in this research folder. Open their raw records for capture details.</p>" : ""}
-  ${sites.size ? `<p>Websites recorded · ${escapeHtml([...sites].join(", "))}</p>` : ""}
-  <nav aria-label="Report sections">
-    <a href="#files">Saved files</a><a href="#issues">What needs attention</a><a href="#details">Technical details</a>
+  ${records.some((record) => record.earlier) ? `<p>${messages.earlierNote}</p>` : ""}
+  ${sites.size ? `<p>${messages.websites} · ${escapeHtml([...sites].join(", "))}</p>` : ""}
+  <nav aria-label="${messages.sections}">
+    <a href="#files">${messages.savedFiles}</a><a href="#issues">${messages.issues}</a><a href="#details">${messages.technicalDetails}</a>
   </nav>
   <section id="files">
-    <h2>Saved files</h2>
-    ${categories || "<p>No files were saved in this capture.</p>"}
+    <h2>${messages.savedFiles}</h2>
+    ${categories || `<p>${messages.noFiles}</p>`}
   </section>
   <section id="issues">
-    <h2>What needs attention</h2>
-    ${issues.length ? `<ul>${issues.join("")}</ul>` : "<p>No missing files or save problems were recorded.</p>"}
+    <h2>${messages.issues}</h2>
+    ${issues.length ? `<ul>${issues.join("")}</ul>` : `<p>${messages.noIssues}</p>`}
   </section>
   <section id="details">
-    <h2>Technical details</h2>
-    ${exchanges.join("") || (historyOnly ? "<p>No saved capture records were found for this research ID.</p>" : "<p>No completed requests were recorded.</p>")}
+    <h2>${messages.technicalDetails}</h2>
+    ${exchanges.join("") || (historyOnly ? `<p>${messages.noHistory}</p>` : `<p>${messages.noRequests}</p>`)}
   </section>
 </main>
 </html>`], { type: "text/html;charset=utf-8" });
