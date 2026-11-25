@@ -8,7 +8,7 @@ Input: approved User Story and acceptance criteria. Output: task issues, tested 
 - Implement only the assigned task, following `.ai/standards/`.
 - Commit the human-selected version in `VERSION`, `chrome/manifest.json`, and `firefox/manifest.json` together. It must be higher than the current `origin/main` version.
 - Add meaningful unit tests and regression tests for defects.
-- Run Maven verification before committing and pushing; report blocked external dependencies or test failures.
+- Run `node --test` from the repository root before committing and pushing; report blocked external dependencies or test failures.
 - Commit with Conventional Commits and include issue references.
 - Integrate finished task branches into the story branch, never into `main`; resolve conflicts carefully and verify the combined result.
 - Do not create separate PRs for tasks. QA must pass before the story PR is created.

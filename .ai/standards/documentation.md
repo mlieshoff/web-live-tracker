@@ -34,7 +34,7 @@ Routine implementation details do not require separate documentation.
 The QA agent MUST document:
 
 - Acceptance criteria verification results.
-- Unit test and Maven verification results.
+- The exact test commands and results, including `node --test` and the version check when applicable.
 - Identified defects and unresolved issues.
 - Any limitations of the performed testing.
 - The final QA status: PASSED, FAILED, or BLOCKED.
