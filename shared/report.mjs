@@ -81,6 +81,32 @@ function fileDescription(file, direction, messages) {
   return messages.fileUnavailable;
 }
 
+function renderSources(sources, messages, collapsible = false) {
+  return [...sources].map(([url, captures]) => {
+    const source = url ? `<div>${messages.sourceUrl} <span>${escapeHtml(url)}</span></div>` : "";
+    if (collapsible) return source + `<ul>${captures.map(({ html }) => `<li>${html}</li>`).join("")}</ul>`;
+    return source + captures.map(({ html }) => `<div>${html}</div>`).join("");
+  }).join("");
+}
+
+function fileSourceDetails(sources, messages) {
+  const earlierSources = new Map();
+  const currentSources = new Map();
+  let earlierCount = 0;
+  for (const [url, captures] of sources) {
+    const earlier = captures.filter((capture) => capture.earlier);
+    const current = captures.filter((capture) => !capture.earlier);
+    if (earlier.length) earlierSources.set(url, earlier);
+    if (current.length) currentSources.set(url, current);
+    earlierCount += earlier.length;
+  }
+  if (earlierCount < 2) return renderSources(sources, messages);
+
+  return renderSources(currentSources, messages) +
+    `<details class="earlier-captures"><summary>${messages.earlierCaptureDetails} (${earlierCount})</summary>` +
+    renderSources(earlierSources, messages, true) + "</details>";
+}
+
 export function captureReport({ researchId, startedAt, records, unreadable = 0, folderUnavailable = false, folderNotSelected = false, historyOnly = false, language = "en" }) {
   const locale = language === "de" ? "de" : "en";
   const messages = reportMessages[locale];
@@ -130,8 +156,9 @@ export function captureReport({ researchId, startedAt, records, unreadable = 0, 
           entry.size ??= file.size;
           entry.partial &&= isPartial;
           const source = entry.sources.get(sourceUrl) ?? [];
-          source.push([label, isPartial && messages.partialFile, earlier && messages.earlierCapture, details]
-            .filter(Boolean).join(" · "));
+          const html = [label, isPartial && messages.partialFile, earlier && messages.earlierCapture, details]
+            .filter(Boolean).join(" · ");
+          source.push({ earlier, html });
           entry.sources.set(sourceUrl, source);
           savedFiles.set(file.path, entry);
         } else if (file.status !== "absent") {
@@ -168,10 +195,7 @@ export function captureReport({ researchId, startedAt, records, unreadable = 0, 
     const viewId = file.svg && preview ? `svg-view-${++nextView}` : null;
     const link = fileEntryLink(file, caption, preview, viewId, messages);
     const sizeText = Number.isSafeInteger(size) && size >= 0 ? `<div>${escapeHtml(sizeFormat.format(size))}</div>` : "";
-    const sourceDetails = [...sources].map(([url, captures]) => {
-      const source = url ? `<div>${messages.sourceUrl} <span>${escapeHtml(url)}</span></div>` : "";
-      return source + captures.map((capture) => `<div>${capture}</div>`).join("");
-    }).join("");
+    const sourceDetails = fileSourceDetails(sources, messages);
     groupedFiles.get(fileGroup(file)).push({ name, link, details: sizeText + sourceDetails });
   }
 
@@ -209,6 +233,7 @@ export function captureReport({ researchId, startedAt, records, unreadable = 0, 
   section { border-top: 1px solid GrayText; margin-top: 2rem; }
   li, details { margin-block: .55rem; }
   summary { cursor: pointer; }
+  .earlier-captures ul { margin-block: .25rem .5rem; padding-inline-start: 1.25rem; }
   table { width: 100%; border-collapse: collapse; }
   th, td { border-bottom: 1px solid GrayText; padding: .55rem; text-align: start; vertical-align: top; }
   .file-gallery {
