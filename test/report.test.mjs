@@ -54,31 +54,45 @@ test("an empty capture can still produce a readable report", async () => {
   assert.match(html, /No completed requests were recorded/);
 });
 
-test("report previews use local files, skip unsupported visual formats, and appear once per saved file", async () => {
+test("report players use local files and appear once per complete playable capture", async () => {
   const root = "web-live-tracker/study/2026-01-01/example.test/media";
   const date = new Date("2026-01-01T10:00:00Z");
-  function record(resource, file, status = 200) {
+  function record(resource, file, { status = 200, mediaType, source } = {}) {
     return {
-      metadata: { timestamp: date.toISOString(), url: `https://example.test/${resource}`, method: "GET", status },
+      metadata: { timestamp: date.toISOString(), url: `https://example.test/${resource}`, method: "GET", status, mediaType },
       indexPath: `${root}/${resource}/exchange.json`,
       request: { status: "absent", path: null },
-      response: { status: "saved", path: `${root}/${file}` },
+      response: { status: "saved", path: `${root}/${file}`, source },
     };
   }
   const records = [
     record("photo", "photo/response (1).png"),
     record("repeated-photo", "photo/response (1).png"),
     record("movie", "movie/response.webm"),
-    record("partial-movie", "partial/response.webm", 206),
+    record("repeated-movie", "movie/response.webm"),
+    record("partial-movie", "partial/response.webm", { status: 206 }),
+    record("partial-song", "partial-song/response.mp3", { status: 206 }),
     record("song", "song/response.mp3"),
+    record("voice", "voice/response.webm", { mediaType: "audio/webm; codecs=opus" }),
+    record("refetched", "refetched/response (1).mp4", { status: 206, source: "refetched" }),
+    record("transport", "transport/response.ts"),
   ];
   const html = await captureReport({ researchId: "study", startedAt: date, records }).text();
 
   assert.equal((html.match(/<img class="thumbnail"/g) ?? []).length, 1);
   assert.match(html, /<img class="thumbnail" src="[^"]*photo\/response%20\(1\)\.png"/);
-  assert.match(html, /<video class="thumbnail" src="[^"]*movie\/response\.webm"[^>]*preload="metadata"/);
-  assert.doesNotMatch(html, /<video [^>]*partial\/|<video [^>]*song\/|autoplay|src="https?:/);
-  assert.match(html, /href="[^"]*song\/response\.mp3"/);
+  const players = [...html.matchAll(/<(audio|video) class="media-player" src="\.\/([^"]+)" controls preload="none" aria-label="([^"]+)"><\/\1>/g)];
+  assert.deepEqual(players.map(([, tag, path, label]) => [tag, path.split("/").slice(-2).join("/"), label]), [
+    ["video", "movie/response.webm", "movie · example.test (received)"],
+    ["video", "refetched/response%20(1).mp4", "refetched · example.test (received)"],
+    ["audio", "song/response.mp3", "song · example.test (received)"],
+    ["audio", "voice/response.webm", "voice · example.test (received)"],
+  ]);
+  assert.equal((html.match(/<(?:audio|video)\b/g) ?? []).length, players.length);
+  assert.doesNotMatch(html, /<a\b[^>]*>(?:(?!<\/a>)[\s\S])*?<(?:audio|video)\b|autoplay|src="https?:/);
+  for (const file of ["movie/response.webm", "song/response.mp3", "partial-song/response.mp3", "partial/response.webm", "transport/response.ts"]) {
+    assert.ok(html.includes(`href="./2026-01-01/example.test/media/${file}"`));
+  }
   assert.match(html, /script-src|default-src 'none'/);
 });
 

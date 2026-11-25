@@ -4,8 +4,9 @@ import { reportMessages } from "./report-language.mjs";
 import { isImageFilename } from "./payload.mjs";
 
 const groups = ["images", "media", "documents", "otherFiles"];
-const videoPreviewExtensions = new Set(["m4v", "mov", "mp4", "ogv", "webm"]);
-const mediaExtensions = new Set(["aac", "flac", "m4a", "m4v", "mkv", "mov", "mp3", "mp4", "mpeg", "ogg", "ogv", "ts", "wav", "webm"]);
+const audioPlayerExtensions = new Set(["aac", "flac", "m4a", "mp3", "ogg", "wav"]);
+const videoPlayerExtensions = new Set(["m4v", "mov", "mp4", "ogv", "webm"]);
+const mediaExtensions = new Set([...audioPlayerExtensions, ...videoPlayerExtensions, "mkv", "mpeg", "ts"]);
 const documentExtensions = new Set(["csv", "json", "pdf", "tsv", "txt"]);
 
 function escapeHtml(value) {
@@ -53,7 +54,7 @@ function fileGroup(file) {
   return "otherFiles";
 }
 
-function mediaPreview(file, partial) {
+function imagePreview(file) {
   if (file.svg) {
     // SVG is loaded as a non-interactive image, never as markup or a linked document.
     return file.svgPreview
@@ -66,10 +67,21 @@ function mediaPreview(file, partial) {
   if (isImageFilename(file.path) && extension !== "tiff") {
     return `<img class="thumbnail" src="${href}" alt="" loading="lazy" decoding="async">`;
   }
-  if (!partial && videoPreviewExtensions.has(extension)) {
-    return `<video class="thumbnail" src="${href}" muted playsinline preload="metadata" loading="lazy" aria-hidden="true"></video>`;
-  }
   return "";
+}
+
+function mediaPlayer(file, caption, mediaType) {
+  const extension = fileExtension(file);
+  const audioWebm = extension === "webm" && /^audio\/webm(?:\s*;|\s*$)/i.test(mediaType);
+  let tag;
+  if (audioWebm || audioPlayerExtensions.has(extension)) {
+    tag = "audio";
+  } else if (videoPlayerExtensions.has(extension)) {
+    tag = "video";
+  } else {
+    return "";
+  }
+  return `<${tag} class="media-player" src="${fileHref(file.path)}" controls preload="none" aria-label="${escapeHtml(caption)}"></${tag}>`;
 }
 
 function fileDescription(file, direction, messages) {
@@ -165,6 +177,7 @@ export function captureReport({ researchId, startedAt, records, unreadable = 0, 
             entry.file = { ...file, path: entry.file.path };
           }
           entry.size ??= file.size;
+          if (direction === "response" && !isPartial) entry.mediaType ??= metadata?.mediaType;
           entry.partial &&= isPartial;
           const source = entry.sources.get(sourceUrl) ?? [];
           const html = [label, isPartial && messages.partialFile, earlier && messages.earlierCapture, details]
@@ -201,13 +214,15 @@ export function captureReport({ researchId, startedAt, records, unreadable = 0, 
   }
 
   let nextView = 0;
-  for (const { file, name, caption, partial, sources, size } of savedFiles.values()) {
-    const preview = mediaPreview(file, partial);
+  for (const { file, name, caption, partial, sources, size, mediaType } of savedFiles.values()) {
+    const group = fileGroup(file);
+    const preview = group === "images" ? imagePreview(file) : "";
+    const player = group === "media" && !partial ? mediaPlayer(file, caption, mediaType) : "";
     const viewId = file.svg && preview ? `svg-view-${++nextView}` : null;
     const link = fileEntryLink(file, caption, preview, viewId, messages);
     const sizeText = Number.isSafeInteger(size) && size >= 0 ? `<div>${escapeHtml(sizeFormat.format(size))}</div>` : "";
     const sourceDetails = fileSourceDetails(sources, messages);
-    groupedFiles.get(fileGroup(file)).push({ name, link, details: sizeText + sourceDetails });
+    groupedFiles.get(group).push({ name, link, player, details: sizeText + sourceDetails });
   }
 
   const categories = groups
@@ -217,8 +232,8 @@ export function captureReport({ researchId, startedAt, records, unreadable = 0, 
         .sort((left, right) => fileOrder.compare(left.name, right.name));
       const heading = `<h3 id="files-${group}">${messages[group]}</h3>`;
       if (group === "images" || group === "media") {
-        const tiles = files.map(({ link, details }) =>
-          `<li>${link}<div class="gallery-details">${details}</div></li>`
+        const tiles = files.map(({ link, player, details }) =>
+          `<li>${link}${player}<div class="gallery-details">${details}</div></li>`
         ).join("");
         return `${heading}<ul class="file-gallery" role="list" aria-labelledby="files-${group}">${tiles}</ul>`;
       }
@@ -276,6 +291,10 @@ export function captureReport({ researchId, startedAt, records, unreadable = 0, 
     pointer-events: none;
   }
   .file-gallery .thumbnail { box-sizing: border-box; width: 100%; height: 7rem; }
+  .file-gallery[aria-labelledby="files-media"] {
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 16rem), 1fr));
+  }
+  .media-player { display: block; width: 100%; max-height: 18rem; margin-block: .35rem; }
   :target { outline: 2px solid currentColor; outline-offset: .25rem; }
   .svg-view-actions { display: none; }
   main:has(.svg-view:target) { visibility: hidden; }
