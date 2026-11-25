@@ -148,3 +148,84 @@ test("captureReport sorts file galleries, lists, and tables A–Z by displayed n
     ]),
   );
 });
+
+test("captureReport lists one entry per saved path with the recorded URLs, capture links, and known size", async () => {
+  const root = "web-live-tracker/study";
+  const startedAt = new Date("2026-01-01T10:00:00Z");
+  const records = [
+    ["https://example.test/first/image.png?private=value", "first/response.png"],
+    ["https://example.test/second/image.png", "first/response.png", 1536],
+    ["https://example.test/second/image.png", "first/response.png", 1536],
+    ["https://example.test/first/image.png", "other/response.png"],
+    [null, "older/response.png"],
+  ].map(([url, path, size]) => ({
+    metadata: url ? { timestamp: startedAt.toISOString(), url, method: "GET", status: 200 } : null,
+    host: "example.test",
+    name: "image.png",
+    capturedAt: startedAt.getTime(),
+    earlier: !url,
+    request: { status: "absent" },
+    response: { status: "saved", path: `${root}/${path}`, size },
+  }));
+
+  const html = await captureReport({ researchId: "study", startedAt, records }).text();
+  const savedFiles = html.split('<section id="files">')[1].split("</section>")[0];
+
+  assert.deepEqual({
+    count: html.match(/\d+ files saved/)?.[0],
+    exposedQuery: html.includes("private=value"),
+    paths: [...savedFiles.matchAll(/href="\.\/([^"]+\.png)"/g)].map(([, path]) => path),
+    sources: [...savedFiles.matchAll(/Source URL: <span>([^<]+)<\/span>/g)].map(([, url]) => url),
+    exchanges: [...savedFiles.matchAll(/href="#exchange-(\d+)"/g)].map(([, id]) => id),
+    sizes: [...savedFiles.matchAll(/<div>([\d,]+ bytes)<\/div>/g)].map(([, size]) => size),
+  }, {
+    count: "3 files saved",
+    exposedQuery: false,
+    paths: ["first/response.png", "other/response.png", "older/response.png"],
+    sources: ["https://example.test/first/image.png", "https://example.test/second/image.png", "https://example.test/first/image.png"],
+    exchanges: ["1", "2", "3", "4", "5"],
+    sizes: ["1,536 bytes"],
+  });
+});
+
+test("captureReport collapses multiple earlier captures in one table cell and keeps single captures visible", async () => {
+  const startedAt = new Date("2026-01-01T10:00:00Z");
+  const records = [
+    ["archive.zip", "earlier/first", true],
+    ["archive.zip", "earlier/second", true],
+    ["archive.zip", "current", false],
+    ["single.zip", "earlier/single", true],
+  ].map(([name, source, earlier]) => ({
+    earlier,
+    metadata: {
+      timestamp: startedAt.toISOString(), url: `https://example.test/${source}/${name}`, method: "GET", status: 200,
+    },
+    request: { status: "absent" },
+    response: { status: "saved", path: `web-live-tracker/study/${name}`, size: 256 },
+  }));
+
+  const html = await captureReport({ researchId: "study", startedAt, records, language: "de" }).text();
+  const savedFiles = html.split('<section id="files">')[1].split("</section>")[0];
+  const [multiple, single] = [...savedFiles.matchAll(/<tr><td>.*?<\/tr>/gs)].map(([row]) => row);
+  const disclosure = multiple.match(/<details class="earlier-captures">.*?<\/details>/s)?.[0] ?? "";
+  const visible = multiple.replace(disclosure, "");
+  const links = (markup) => [...markup.matchAll(/href="#exchange-(\d+)"/g)].map(([, id]) => id);
+
+  assert.deepEqual({
+    summary: disclosure.match(/<summary>([^<]+)<\/summary>/)?.[1],
+    earlierLinks: links(disclosure),
+    earlierUrls: [...disclosure.matchAll(/<span>([^<]+)<\/span>/g)].map(([, url]) => url),
+    currentLinks: links(visible),
+    visibleSize: visible.includes("<div>256 Byte</div>"),
+    singleDisclosure: single.includes("<details"),
+    singleLinks: links(single),
+  }, {
+    summary: "Frühere Aufzeichnungsdetails (2)",
+    earlierLinks: ["1", "2"],
+    earlierUrls: ["https://example.test/earlier/first/archive.zip", "https://example.test/earlier/second/archive.zip"],
+    currentLinks: ["3"],
+    visibleSize: true,
+    singleDisclosure: false,
+    singleLinks: ["4"],
+  });
+});

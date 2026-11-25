@@ -1,6 +1,6 @@
 import { createSvgPreviewReader, isSvgMediaType } from "./svg-preview.mjs";
 import { validateResearchId } from "./export.mjs";
-import { isExportedBodyFilename } from "./payload.mjs";
+import { isExportedBodyFilename, isImageFilename, responseContentKey } from "./payload.mjs";
 
 const dateFolder = /^\d{4}-\d{2}-\d{2}$/;
 const exchangeFolder = /^[\da-f]{8}-[\da-f]{4}-[\da-f]{4}-[1-9]\d*$/i;
@@ -27,15 +27,31 @@ async function readExchange(directory, files, exchanges, readSvgPreview) {
       // Keep the saved payloads when the raw record cannot be opened.
     }
   }
-  const entry = { directory, files: names, index };
-  if (!index) return entry;
-
   let metadata;
   try {
-    metadata = JSON.parse(index.text);
+    if (index) metadata = JSON.parse(index.text);
   } catch {
-    return entry;
+    // A malformed raw record still leaves the saved files available.
   }
+
+  const sizes = {};
+  const imageKeys = {};
+  for (const name of names) {
+    if (rawRecordName.test(name)) continue;
+    try {
+      const file = await files.get(name)();
+      sizes[name] = file.size;
+      if (Number.isInteger(metadata?.status) && isExportedBodyFilename(name, "response") &&
+          (isImageFilename(name) || isSvgMediaType(metadata.mediaType))) {
+        const key = await responseContentKey(file, metadata);
+        if (key) imageKeys[name] = key;
+      }
+    } catch {
+      // The file may still be listed when its size is unavailable.
+    }
+  }
+  const entry = { directory, files: names, index, sizes, imageKeys };
+  if (!metadata) return entry;
 
   const previews = {};
   for (const [kind, type] of [["request", metadata?.requestMediaType], ["response", metadata?.mediaType]]) {

@@ -354,3 +354,20 @@ test("SVG responses remain neutral raw files and carry an inline image preview f
   assert.equal(response.svg, true);
   assert.equal(new TextDecoder().decode(Uint8Array.from(atob(response.svgPreview), (byte) => byte.charCodeAt(0))), svg);
 });
+
+test("exportPayloads reports byte sizes for saved request and shared response bodies", async () => {
+  const exchange = {
+    metadata: { ...metadata, status: 200 },
+    request: { status: "saved", data: "ü" },
+    response: { status: "saved", data: Uint8Array.of(1, 2, 3) },
+  };
+  const result = await exportPayloads(
+    async (path) => path.split("/").at(-1), "study", [exchange, exchange], new Date(2026, 0, 3), new Map(),
+  );
+
+  assert.deepEqual({
+    saved: result.saved,
+    sizes: result.records.map(({ request, response }) => [request.size, response.size]),
+    shared: result.records[0].response.path === result.records[1].response.path,
+  }, { saved: 5, sizes: [[2, 3], [2, 3]], shared: true });
+});

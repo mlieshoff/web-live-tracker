@@ -31,6 +31,7 @@ test("selected folder files form a report with their actual metadata and names",
   assert.match(html, /exchange\.json/);
   assert.match(html, /Partial file/);
   assert.match(html, /Status 206/);
+  assert.match(html, /<div>0 bytes<\/div>/);
   assert.doesNotMatch(html, /response\.html|Downloads history/);
 });
 
@@ -136,7 +137,11 @@ test("rebuilt reports show neutral SVG captures under Images, including a shared
   assert.equal(records[0].response.path, records[1].response.path);
   assert.match(html, /<h3 id="files-images">Images<\/h3><ul class="file-gallery"[^>]*><li><div id="svg-view-1"/);
   assert.match(html, /target="_blank" rel="noopener noreferrer" href="#svg-view-1"><img class="thumbnail" src="data:image\/svg\+xml;base64,/);
-  assert.equal((html.match(/href="#svg-view-1"/g) ?? []).length, 2);
+  const savedFiles = html.split('<section id="files">')[1].split("</section>")[0];
+  assert.equal((savedFiles.match(/href="#svg-view-1"/g) ?? []).length, 1);
+  assert.equal((savedFiles.match(/Source URL:/g) ?? []).length, 1);
+  assert.deepEqual([...savedFiles.matchAll(/href="#exchange-(\d+)"/g)].map(([, id]) => id), ["1", "2"]);
+  assert.ok(savedFiles.includes(`<div>${svg.length} bytes</div>`));
   assert.match(html, /target="_blank" rel="noopener noreferrer" href="[^"]+response\.txt">Open saved file/);
   assert.equal((html.match(/data:image\/svg\+xml;base64,/g) ?? []).length, 1);
   assert.doesNotMatch(html, /<svg|<object|<embed|<iframe|<h3>Documents/);
@@ -156,4 +161,46 @@ test("an SVG too large for an inline preview still belongs to Images and keeps i
 
   assert.match(html, /<h3 id="files-images">Images<\/h3>.*href="[^"]+response\.txt"/);
   assert.doesNotMatch(html, /src="data:image\/svg/);
+});
+
+test("captureReport groups identical earlier and current images while preserving changed and partial images", async () => {
+  const png = Uint8Array.of(0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1);
+  const changed = png.slice();
+  changed[changed.length - 1] = 2;
+  const metadata = {
+    url: "https://example.test/image.png", timestamp: date.toISOString(), method: "GET", status: 200,
+    mediaType: "image/png",
+  };
+  const archive = `study/${directory}`;
+  const partial = archive.replace("01234567-abcd-4567-1", "01234567-abcd-4567-2");
+  const entries = await readSelectedCaptureFiles([
+    selected(`${archive}/exchange.json`, JSON.stringify({ ...metadata, responseFile: "response.png" })),
+    selected(`${archive}/response.png`, png),
+    selected(`${partial}/exchange.json`, JSON.stringify({
+      ...metadata, status: 206, responseRange: "bytes 0-8/16", responseFile: "response.png",
+    })),
+    selected(`${partial}/response.png`, png),
+  ], "study");
+  const live = [png, changed].map((data) => ({
+    metadata: { ...metadata, timestamp: new Date(date.getTime() + 1000).toISOString() },
+    request: { status: "absent" },
+    response: { status: "saved", data },
+  }));
+  const current = await exportPayloads(
+    async (path) => path.split("/").at(-1), "study", live, date, new Map(),
+  );
+  const earlier = earlierCaptureRecords(entries, "study", current.records);
+
+  const html = await captureReport({
+    researchId: "study", startedAt: date, records: [...earlier.records, ...current.records],
+  }).text();
+  const gallery = html.split('<section id="files">')[1].split("</section>")[0];
+  const tiles = [...gallery.matchAll(/<li>(.*?)<\/li>/gs)].map(([, tile]) => tile);
+
+  assert.deepEqual({
+    physicalPaths: new Set([...earlier.records, ...current.records].map(({ response }) => response.path)).size,
+    count: html.match(/\d+ files saved/)?.[0],
+    thumbnailCount: [...gallery.matchAll(/class="thumbnail"/g)].length,
+    captures: tiles.map((tile) => [...tile.matchAll(/href="#exchange-(\d+)"/g)].map(([, id]) => id)),
+  }, { physicalPaths: 4, count: "3 files saved", thumbnailCount: 3, captures: [["1", "3"], ["2"], ["4"]] });
 });

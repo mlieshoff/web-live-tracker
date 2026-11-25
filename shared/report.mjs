@@ -1,8 +1,9 @@
 import { translateDiagnostic } from "./panel-language.mjs";
 import { reportMessages } from "./report-language.mjs";
 
+import { isImageFilename } from "./payload.mjs";
+
 const groups = ["images", "media", "documents", "otherFiles"];
-const imageExtensions = new Set(["avif", "bmp", "gif", "jpg", "png", "tiff", "webp"]);
 const videoPreviewExtensions = new Set(["m4v", "mov", "mp4", "ogv", "webm"]);
 const mediaExtensions = new Set(["aac", "flac", "m4a", "m4v", "mkv", "mov", "mp3", "mp4", "mpeg", "ogg", "ogv", "ts", "wav", "webm"]);
 const documentExtensions = new Set(["csv", "json", "pdf", "tsv", "txt"]);
@@ -28,13 +29,9 @@ function fileLink(path, label, preview) {
   return newTabLink(fileHref(path), label, preview);
 }
 
-function fileEntryLink(file, caption, preview, svgViews, messages) {
-  const view = file.svg && svgViews.get(file.path);
-  if (view) return newTabLink(`#${view}`, caption);
-  if (!file.svg || !preview) return fileLink(file.path, caption, preview);
+function fileEntryLink(file, caption, preview, id, messages) {
+  if (!id) return fileLink(file.path, caption, preview);
 
-  const id = `svg-view-${svgViews.size + 1}`;
-  svgViews.set(file.path, id);
   return `<div id="${id}" class="svg-view">
     ${newTabLink(`#${id}`, caption, preview)}
     <div class="svg-view-actions">
@@ -50,7 +47,7 @@ function fileExtension(file) {
 
 function fileGroup(file) {
   const extension = fileExtension(file);
-  if (file.svg || imageExtensions.has(extension)) return "images";
+  if (file.svg || isImageFilename(file.path)) return "images";
   if (mediaExtensions.has(extension)) return "media";
   if (documentExtensions.has(extension)) return "documents";
   return "otherFiles";
@@ -66,7 +63,7 @@ function mediaPreview(file, partial) {
 
   const extension = fileExtension(file);
   const href = fileHref(file.path);
-  if (imageExtensions.has(extension) && extension !== "tiff") {
+  if (isImageFilename(file.path) && extension !== "tiff") {
     return `<img class="thumbnail" src="${href}" alt="" loading="lazy" decoding="async">`;
   }
   if (!partial && videoPreviewExtensions.has(extension)) {
@@ -85,11 +82,46 @@ function fileDescription(file, direction, messages) {
   return messages.fileUnavailable;
 }
 
+function renderSources(sources, messages, collapsible = false) {
+  return [...sources].map(([url, captures]) => {
+    const source = url ? `<div>${messages.sourceUrl} <span>${escapeHtml(url)}</span></div>` : "";
+    if (collapsible) return source + `<ul>${captures.map(({ html }) => `<li>${html}</li>`).join("")}</ul>`;
+    return source + captures.map(({ html }) => `<div>${html}</div>`).join("");
+  }).join("");
+}
+
+function fileSourceDetails(sources, messages) {
+  const earlierSources = new Map();
+  const currentSources = new Map();
+  let earlierCount = 0;
+  for (const [url, captures] of sources) {
+    const earlier = captures.filter((capture) => capture.earlier);
+    const current = captures.filter((capture) => !capture.earlier);
+    if (earlier.length) earlierSources.set(url, earlier);
+    if (current.length) currentSources.set(url, current);
+    earlierCount += earlier.length;
+  }
+  if (earlierCount < 2) return renderSources(sources, messages);
+
+  return renderSources(currentSources, messages) +
+    `<details class="earlier-captures"><summary>${messages.earlierCaptureDetails} (${earlierCount})</summary>` +
+    renderSources(earlierSources, messages, true) + "</details>";
+}
+
 export function captureReport({ researchId, startedAt, records, unreadable = 0, folderUnavailable = false, folderNotSelected = false, historyOnly = false, language = "en" }) {
   const locale = language === "de" ? "de" : "en";
   const messages = reportMessages[locale];
   const fileOrder = new Intl.Collator(locale, { sensitivity: "accent" });
   const groupedFiles = new Map(groups.map((group) => [group, []]));
+  const savedFiles = new Map();
+  const imageKeysByPath = new Map();
+  for (const { response } of records) {
+    if (response?.path && response.contentKey && fileGroup(response) === "images") {
+      const type = response.svg ? "svg" : fileExtension(response);
+      imageKeysByPath.set(response.path, `image:${type}:${response.contentKey}`);
+    }
+  }
+  const sizeFormat = new Intl.NumberFormat(locale, { style: "unit", unit: "byte", unitDisplay: "long" });
   const issues = [];
   if (folderUnavailable) {
     issues.push(`<li>${messages.folderUnavailable}</li>`);
@@ -101,13 +133,11 @@ export function captureReport({ researchId, startedAt, records, unreadable = 0, 
   }
   const exchanges = [];
   const sites = new Set();
-  const previewed = new Set();
-  const svgViews = new Map();
-  let saved = 0;
 
   for (const [index, record] of records.entries()) {
     const { metadata, request, response, indexPath, error, earlier } = record;
     const url = metadata ? new URL(metadata.url) : null;
+    const sourceUrl = url ? url.origin + url.pathname : null;
     const host = url?.host ?? record.host;
     const resource = url ? url.pathname.split("/").filter(Boolean).at(-1) : record.name;
     sites.add(host);
@@ -125,19 +155,23 @@ export function captureReport({ researchId, startedAt, records, unreadable = 0, 
         const label = direction === "response" ? messages.received : messages.sent;
         notes.push(`<li>${label} — ${description}</li>`);
         if (file.path) {
-          const badges = direction === "response" && partial ? messages.partialFile : "";
-          const caption = `${name} (${label.toLowerCase()})`;
-          const earlierLabel = earlier ? messages.earlierCapture : "";
-          const preview = previewed.has(file.path) ? "" : mediaPreview(file, direction === "response" && partial);
-          if (preview) previewed.add(file.path);
-          const fileDetails = [badges, earlierLabel, details].filter(Boolean).join(" · ");
-          const link = fileEntryLink(file, caption, preview, svgViews, messages);
-          groupedFiles.get(fileGroup(file)).push({
-            name: resource ?? host,
-            link,
-            details: fileDetails,
-          });
-          saved += 1;
+          const isPartial = direction === "response" && partial;
+          const savedKey = imageKeysByPath.get(file.path) ?? file.path;
+          const entry = savedFiles.get(savedKey) ?? {
+            file, name: resource ?? host, caption: `${name} (${label.toLowerCase()})`,
+            partial: isPartial, sources: new Map(), size: file.size,
+          };
+          if (file.svgPreview || (file.svg && !entry.file.svg)) {
+            entry.file = { ...file, path: entry.file.path };
+          }
+          entry.size ??= file.size;
+          entry.partial &&= isPartial;
+          const source = entry.sources.get(sourceUrl) ?? [];
+          const html = [label, isPartial && messages.partialFile, earlier && messages.earlierCapture, details]
+            .filter(Boolean).join(" · ");
+          source.push({ earlier, html });
+          entry.sources.set(sourceUrl, source);
+          savedFiles.set(savedKey, entry);
         } else if (file.status !== "absent") {
           issues.push(`<li>${escapeHtml(name)} · ${label}. ${description} ${details}</li>`);
         }
@@ -156,7 +190,7 @@ export function captureReport({ researchId, startedAt, records, unreadable = 0, 
     const raw = indexPath ? fileLink(indexPath, messages.openRawRecord) : "";
     const time = metadata?.timestamp ?? new Date(record.capturedAt).toLocaleDateString(locale);
     const technicalDetails = metadata
-      ? `${escapeHtml(metadata.method)} ${escapeHtml(metadata.url)} · ${messages.status} ${escapeHtml(metadata.status)}`
+      ? `${escapeHtml(metadata.method)} ${escapeHtml(sourceUrl)} · ${messages.status} ${escapeHtml(metadata.status)}`
       : messages.filesInFolder;
     exchanges.push(`<details>
       <summary>${escapeHtml(name)} · ${escapeHtml(time)}${earlier ? ` · ${messages.earlierCapture}` : ""}</summary>
@@ -164,6 +198,16 @@ export function captureReport({ researchId, startedAt, records, unreadable = 0, 
       ${error ? `<p>${escapeHtml(translateDiagnostic(locale, error))}</p>` : `<ul>${notes.join("")}</ul>`}
       ${raw}
     </details>`);
+  }
+
+  let nextView = 0;
+  for (const { file, name, caption, partial, sources, size } of savedFiles.values()) {
+    const preview = mediaPreview(file, partial);
+    const viewId = file.svg && preview ? `svg-view-${++nextView}` : null;
+    const link = fileEntryLink(file, caption, preview, viewId, messages);
+    const sizeText = Number.isSafeInteger(size) && size >= 0 ? `<div>${escapeHtml(sizeFormat.format(size))}</div>` : "";
+    const sourceDetails = fileSourceDetails(sources, messages);
+    groupedFiles.get(fileGroup(file)).push({ name, link, details: sizeText + sourceDetails });
   }
 
   const categories = groups
@@ -179,7 +223,7 @@ export function captureReport({ researchId, startedAt, records, unreadable = 0, 
         return `${heading}<ul class="file-gallery" role="list" aria-labelledby="files-${group}">${tiles}</ul>`;
       }
       if (group === "documents") {
-        const items = files.map(({ link, details }) => `<li>${link} · ${details}</li>`).join("");
+        const items = files.map(({ link, details }) => `<li>${link}${details}</li>`).join("");
         return `${heading}<ul aria-labelledby="files-${group}">${items}</ul>`;
       }
       const rows = files.map(({ link, details }) => `<tr><td>${link}</td><td>${details}</td></tr>`).join("");
@@ -195,11 +239,12 @@ export function captureReport({ researchId, startedAt, records, unreadable = 0, 
 <title>${escapeHtml(researchId)} · ${messages.title}</title>
 <style>
   :root { color-scheme: light dark; font: 16px/1.55 system-ui, sans-serif; }
-  body { max-width: 54rem; padding: 1.5rem; margin: auto; overflow-wrap: anywhere; }
+  body { box-sizing: border-box; max-width: 100rem; padding: clamp(.75rem, 2vw, 1.5rem); margin: auto; overflow-wrap: anywhere; }
   nav { display: flex; flex-wrap: wrap; gap: 1rem; }
   section { border-top: 1px solid GrayText; margin-top: 2rem; }
   li, details { margin-block: .55rem; }
   summary { cursor: pointer; }
+  .earlier-captures ul { margin-block: .25rem .5rem; padding-inline-start: 1.25rem; }
   table { width: 100%; border-collapse: collapse; }
   th, td { border-bottom: 1px solid GrayText; padding: .55rem; text-align: start; vertical-align: top; }
   .file-gallery {
@@ -274,7 +319,7 @@ export function captureReport({ researchId, startedAt, records, unreadable = 0, 
 </style>
 <main>
   <h1>${escapeHtml(researchId)} · ${messages.title}</h1>
-  <p>${historyOnly ? messages.created : messages.started} ${escapeHtml(startedAt.toLocaleString(locale))} · ${messages.saved(saved)}</p>
+  <p>${historyOnly ? messages.created : messages.started} ${escapeHtml(startedAt.toLocaleString(locale))} · ${messages.saved(savedFiles.size)}</p>
   <p>Downloads/web-live-tracker/${escapeHtml(researchId)}/</p>
   ${records.some((record) => record.earlier) ? `<p>${messages.earlierNote}</p>` : ""}
   ${sites.size ? `<p>${messages.websites} · ${escapeHtml([...sites].join(", "))}</p>` : ""}
