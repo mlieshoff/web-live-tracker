@@ -98,3 +98,34 @@ const germanDiagnostics = new Map([
 export function translateDiagnostic(language, detail) {
   return language === "de" ? germanDiagnostics.get(detail) ?? detail : detail;
 }
+
+export const panelTooltips = {
+  en: {
+    language: "Changes the language of the panel, guide, and reports opened from the panel.",
+    help: "Read the quick guide to capturing requests, finding files, and opening reports.",
+    researchId: "Names the download folder for this project. Reuse the same ID to group related captures.",
+    start: "Begin saving requests and responses from the inspected tab for this research ID.",
+    stop: "Stop taking new requests. Pending files finish saving before the report is created.",
+    openReport: "Open a report for this research ID. You may be asked to select its download folder.",
+    captureStatus: "Shows whether capture is running, downloads are finishing, or the report is ready.",
+    saveLocation: "Capture files go into dated subfolders. Reports are saved directly in the research folder.",
+    capturedCount: "Requests recorded since this capture started.",
+    savedCount: "Files successfully saved for this capture, excluding the HTML report.",
+    pendingCount: "Captured requests whose files have not finished processing.",
+    saveErrors: "Expand to see which files or requests could not be saved and why.",
+  },
+  de: {
+    language: "Ändert die Sprache des Panels, der Kurzanleitung und der Berichte, die du über das Panel öffnest.",
+    help: "Lies, wie du Anfragen aufzeichnest, Dateien findest und Berichte öffnest.",
+    researchId: "Legt den Namen des Download-Ordners fest. Verwende dieselbe ID für zusammengehörige Aufzeichnungen.",
+    start: "Speichert ab jetzt Anfragen und Antworten aus dem untersuchten Tab für diese Recherche-ID.",
+    stop: "Erfasst keine neuen Anfragen mehr. Ausstehende Dateien werden noch vor dem Bericht gespeichert.",
+    openReport: "Öffnet den Bericht für diese Recherche-ID. Möglicherweise musst du den zugehörigen Download-Ordner auswählen.",
+    captureStatus: "Zeigt an, ob die Aufzeichnung läuft, Dateien noch gespeichert werden oder der Bericht fertig ist.",
+    saveLocation: "Aufzeichnungsdateien liegen in Unterordnern nach Datum. Berichte liegen direkt im Rechercheordner.",
+    capturedCount: "Seit Beginn dieser Aufzeichnung erfasste Anfragen.",
+    savedCount: "Erfolgreich gespeicherte Dateien dieser Aufzeichnung. Der HTML-Bericht wird separat gespeichert.",
+    pendingCount: "Erfasste Anfragen, deren Dateien noch verarbeitet werden.",
+    saveErrors: "Zeigt beim Aufklappen, welche Dateien oder Anfragen nicht gespeichert werden konnten und warum.",
+  },
+};

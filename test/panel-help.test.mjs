@@ -6,7 +6,7 @@ const panelUrl = new URL("../shared/panel.mjs", import.meta.url);
 const markup = readFileSync(new URL("../shared/panel.html", import.meta.url), "utf8");
 
 test("the question-mark button targets a named modal with a native close control", () => {
-  assert.match(markup, /<button id="open-help" type="button" aria-label="Help" aria-haspopup="dialog">\?<\/button>[\s\S]*<dialog id="help-dialog" aria-labelledby="help-title">[\s\S]*<h2 id="help-title"[\s\S]*<form method="dialog">\s*<button type="submit"[^>]*autofocus>/);
+  assert.match(markup, /<button id="open-help"[^>]*type="button" aria-label="Help" aria-haspopup="dialog">\?<\/button>[\s\S]*<dialog id="help-dialog" aria-labelledby="help-title">[\s\S]*<h2 id="help-title"[\s\S]*<form method="dialog">\s*<button type="submit"[^>]*autofocus>/);
 });
 
 for (const browserName of ["chrome", "firefox"]) {
@@ -15,7 +15,7 @@ for (const browserName of ["chrome", "firefox"]) {
 }
 
 async function verifyPanelSwitching(browserName) {
-  const { document, elements, labels } = panelDocument();
+  const { document, elements, labels, tooltips } = panelDocument();
   const storage = new Map([["panel-language", "de"]]);
   const requestFinished = new Set();
   const browser = {
@@ -62,6 +62,8 @@ async function verifyPanelSwitching(browserName) {
     labels.get("helpTitle").textContent, labels.get("helpClose").textContent,
   ], ["de", true, "Hilfe", "Kurzanleitung zur Aufzeichnung", "Schließen"]);
   dialog.open = false;
+  assert.equal(tooltips.size, 12);
+  const germanTooltips = new Map([...tooltips].map(([key, element]) => [key, element.getAttribute("title")]));
 
   field.value = "";
   elements.get("capture-form").dispatchEvent(new Event("submit"));
@@ -69,6 +71,14 @@ async function verifyPanelSwitching(browserName) {
   language.value = "en";
   language.dispatchEvent(new Event("change"));
   assert.match(error.textContent, /^Use 1–64/);
+  assert.deepEqual(
+    [...tooltips].filter(([key, element]) => {
+      const title = element.getAttribute("title");
+      return !germanTooltips.get(key) || !title || title === germanTooltips.get(key)
+        || title !== element.getAttribute("aria-description");
+    }).map(([key]) => key),
+    [],
+  );
 
   field.value = "qa-capture";
   elements.get("capture-form").dispatchEvent(new Event("submit"));
@@ -92,16 +102,18 @@ async function verifyPanelSwitching(browserName) {
 function panelDocument() {
   const elements = new Map();
   const labels = new Map();
+  const tooltips = new Map();
   const document = {
     documentElement: {},
     createElement: () => new PanelElement(),
     querySelector: (selector) => elements.get(selector.slice(1)),
-    querySelectorAll: () => [...labels.values()],
+    querySelectorAll: (selector) => [...(selector === "[data-tooltip]" ? tooltips : labels).values()],
   };
 
   for (const [tag] of markup.matchAll(/<[^>]+>/g)) {
     const id = tag.match(/\bid="([^"]+)"/)?.[1];
     const message = tag.match(/\bdata-message="([^"]+)"/)?.[1];
+    const tooltip = tag.match(/\bdata-tooltip="([^"]+)"/)?.[1];
     const element = new PanelElement();
     element.focus = () => { document.activeElement = element; };
     if (id) elements.set(id, element);
@@ -109,8 +121,12 @@ function panelDocument() {
       element.dataset.message = message;
       labels.set(message, element);
     }
+    if (tooltip) {
+      element.dataset.tooltip = tooltip;
+      tooltips.set(tooltip, element);
+    }
   }
-  return { document, elements, labels };
+  return { document, elements, labels, tooltips };
 }
 
 class PanelElement extends EventTarget {

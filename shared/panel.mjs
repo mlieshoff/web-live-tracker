@@ -1,7 +1,7 @@
 import { readGrantedCaptureDirectory } from "./capture-folder.mjs";
 import { validateResearchId } from "./export.mjs";
 import { createLiveCapture } from "./live-capture.mjs";
-import { panelMessages, readPanelLanguage, savePanelLanguage, translateDiagnostic } from "./panel-language.mjs";
+import { panelMessages, panelTooltips, readPanelLanguage, savePanelLanguage, translateDiagnostic } from "./panel-language.mjs";
 import { networkMonitorTip, openCaptureFolderPicker, openCaptureReport, readResponseContent, requestFinished, saveCaptureReport, saveExtensionFile } from "../browser/browser-api.mjs";
 
 const form = document.querySelector("#capture-form");
@@ -72,6 +72,11 @@ function applyLanguage() {
   helpButton.setAttribute("aria-label", messages.helpButton);
   for (const element of document.querySelectorAll("[data-message]")) {
     showText(element, messages[element.dataset.message]);
+  }
+  for (const element of document.querySelectorAll("[data-tooltip]")) {
+    const tooltip = panelTooltips[language][element.dataset.tooltip];
+    element.setAttribute("title", tooltip);
+    element.setAttribute("aria-description", tooltip);
   }
   showText(networkTip, networkMonitorTip ? messages.networkMonitorTip : "");
   showText(idError, hasResearchIdError ? messages.invalidResearchId : "");

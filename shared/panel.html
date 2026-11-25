@@ -11,37 +11,37 @@
     <main>
       <header class="panel-header">
         <h1>Web Live Tracker</h1>
-        <p id="capture-status" class="capture-status" data-state="stopped" role="status" tabindex="-1">Capture stopped.</p>
+        <p id="capture-status" data-tooltip="captureStatus" class="capture-status" data-state="stopped" role="status" tabindex="-1">Capture stopped.</p>
       </header>
       <div class="panel-tools">
         <label for="panel-language" data-message="language">Language</label>
-        <select id="panel-language">
+        <select id="panel-language" data-tooltip="language">
           <option value="en" lang="en">English</option>
           <option value="de" lang="de">Deutsch</option>
         </select>
-        <button id="open-help" type="button" aria-label="Help" aria-haspopup="dialog">?</button>
+        <button id="open-help" data-tooltip="help" type="button" aria-label="Help" aria-haspopup="dialog">?</button>
       </div>
       <form id="capture-form" class="capture-form" novalidate>
         <label for="research-id" data-message="researchId">Research ID</label>
-        <input id="research-id" type="text" maxlength="64" autocomplete="off"
+        <input id="research-id" data-tooltip="researchId" type="text" maxlength="64" autocomplete="off"
           spellcheck="false" placeholder="my-first-capture" required aria-describedby="research-id-error">
         <p id="research-id-error" class="error-message" role="alert"></p>
         <div class="capture-actions">
-          <button id="start" data-message="start" type="submit" disabled aria-describedby="save-location">Start capture</button>
-          <button id="stop" data-message="stop" type="button" disabled>Stop capture</button>
-          <button id="open-report" data-message="openReport" type="button" disabled>Open capture report</button>
+          <button id="start" data-tooltip="start" data-message="start" type="submit" disabled aria-describedby="save-location">Start capture</button>
+          <button id="stop" data-tooltip="stop" data-message="stop" type="button" disabled>Stop capture</button>
+          <button id="open-report" data-tooltip="openReport" data-message="openReport" type="button" disabled>Open capture report</button>
         </div>
         <p id="report-error" class="error-message" role="alert"></p>
-        <p id="save-location" class="save-location"><span data-message="saveLocation">Find your files and reports under </span><code id="save-path">Downloads/web-live-tracker/&lt;research ID&gt;/</code>.</p>
+        <p id="save-location" data-tooltip="saveLocation" class="save-location"><span data-message="saveLocation">Find your files and reports under </span><code id="save-path">Downloads/web-live-tracker/&lt;research ID&gt;/</code>.</p>
         <p id="network-monitor-tip" class="save-location" hidden></p>
       </form>
       <dl class="capture-counts">
-        <div><dt data-message="capturedCount">Requests captured</dt><dd id="captured-count">0</dd></div>
-        <div><dt data-message="savedCount">Files saved</dt><dd id="saved-count">0</dd></div>
-        <div><dt data-message="pendingCount">Pending exchanges</dt><dd id="pending-count">0</dd></div>
+        <div data-tooltip="capturedCount"><dt data-message="capturedCount">Requests captured</dt><dd id="captured-count">0</dd></div>
+        <div data-tooltip="savedCount"><dt data-message="savedCount">Files saved</dt><dd id="saved-count">0</dd></div>
+        <div data-tooltip="pendingCount"><dt data-message="pendingCount">Pending exchanges</dt><dd id="pending-count">0</dd></div>
       </dl>
       <details id="save-errors" class="save-errors" hidden>
-        <summary id="save-error-summary">Save errors</summary>
+        <summary id="save-error-summary" data-tooltip="saveErrors">Save errors</summary>
         <p id="save-error-limit" class="save-error-limit" hidden></p>
         <ul id="save-error-list"></ul>
       </details>
