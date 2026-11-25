@@ -30,6 +30,8 @@ let reportMessage;
 let hasResearchIdError = false;
 let displayedResearchId;
 const languageSelect = document.querySelector("#panel-language");
+const helpButton = document.querySelector("#open-help");
+const helpDialog = document.querySelector("#help-dialog");
 let language = readPanelLanguage(localStorage);
 let messages;
 const networkTip = document.querySelector("#network-monitor-tip");
@@ -66,6 +68,7 @@ function applyLanguage() {
   messages = panelMessages[language];
   document.documentElement.lang = language;
   languageSelect.value = language;
+  helpButton.setAttribute("aria-label", messages.helpButton);
   for (const element of document.querySelectorAll("[data-message]")) {
     showText(element, messages[element.dataset.message]);
   }
@@ -86,6 +89,7 @@ languageSelect.addEventListener("change", () => {
   applyLanguage();
   savePanelLanguage(localStorage, language);
 });
+helpButton.addEventListener("click", () => helpDialog.showModal());
 applyLanguage();
 
 function showSaveErrors(failed, errorCount, errors) {

@@ -1,6 +1,13 @@
 export const panelMessages = {
   en: {
     language: "Language",
+    helpButton: "Help",
+    helpTitle: "Capture guide",
+    helpStart: "Enter a research ID and choose Start capture. Use the inspected tab to generate the requests you want to save.",
+    helpStop: "Choose Stop capture and wait for the files and report to finish saving.",
+    helpFiles: "Find your files in your browser’s Downloads folder under web-live-tracker, then your research ID. Capture files are grouped by date.",
+    helpReport: "Choose Open capture report. If prompted, select your research folder to include earlier captures.",
+    helpClose: "Close",
     researchId: "Research ID",
     start: "Start capture",
     stop: "Stop capture",
@@ -25,6 +32,13 @@ export const panelMessages = {
   },
   de: {
     language: "Sprache",
+    helpButton: "Hilfe",
+    helpTitle: "Kurzanleitung zur Aufzeichnung",
+    helpStart: "Gib eine Recherche-ID ein und wähle „Aufzeichnung starten“. Führe im untersuchten Tab die Aktionen aus, deren Anfragen du speichern möchtest.",
+    helpStop: "Wähle „Aufzeichnung stoppen“ und warte, bis die Dateien und der Bericht gespeichert sind.",
+    helpFiles: "Die Dateien liegen im Download-Ordner deines Browsers unter web-live-tracker und deiner Recherche-ID. Die Aufzeichnungsdateien sind nach Datum sortiert.",
+    helpReport: "Wähle „Aufzeichnungsbericht öffnen“. Wenn du dazu aufgefordert wirst, wähle deinen Rechercheordner aus, um frühere Aufzeichnungen einzubeziehen.",
+    helpClose: "Schließen",
     researchId: "Recherche-ID",
     start: "Aufzeichnung starten",
     stop: "Aufzeichnung stoppen",

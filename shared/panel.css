@@ -94,6 +94,39 @@ h1 {
   font: inherit;
 }
 
+#open-help {
+  min-width: 2.65rem;
+  border-radius: 50%;
+}
+
+#help-dialog {
+  width: min(32rem, calc(100% - 1.5rem));
+  max-height: calc(100% - 1.5rem);
+  padding: clamp(0.85rem, 4vw, 1.4rem);
+  border: 1px solid var(--border);
+  border-radius: 0.9rem;
+  background: var(--surface);
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+
+#help-dialog::backdrop {
+  background: rgb(0 0 0 / 55%);
+}
+
+#help-dialog h2 {
+  margin: 0;
+  font-size: 1.25rem;
+}
+
+#help-dialog ol {
+  padding-inline-start: 1.35rem;
+}
+
+#help-dialog li + li {
+  margin-block-start: 0.6rem;
+}
+
 .capture-status {
   display: inline-flex;
   align-items: center;
