@@ -57,8 +57,8 @@ export function earlierCaptureRecords(entries, researchId, currentRecords) {
     return parts.length >= 4 && dateFolder.test(parts[0]) && exchangeFolder.test(parts.at(-1)) &&
       parts.every((part) => part && part !== "." && part !== ".." && !part.includes("\\"));
   });
-  const responsePaths = new Set(validEntries.flatMap(({ directory, files }) =>
-    files.filter((name) => isExportedBodyFilename(name, "response")).map((name) => `${directory}/${name}`)
+  const fileSizes = new Map(validEntries.flatMap(({ directory, files, sizes }) =>
+    files.map((name) => [prefix + directory + "/" + name, sizes?.[name]])
   ));
   const records = [];
   let unreadable = 0;
@@ -78,11 +78,16 @@ export function earlierCaptureRecords(entries, researchId, currentRecords) {
 
     const request = archiveBody("request", parsed?.data, folder, files);
     const reusedPath = parsed?.data.responseFilePath;
-    const sharedPath = responsePaths.has(reusedPath) ? prefix + reusedPath : undefined;
+    const sharedPath = typeof reusedPath === "string" && isExportedBodyFilename(reusedPath.split("/").at(-1), "response") &&
+      fileSizes.has(prefix + reusedPath) ? prefix + reusedPath : undefined;
     const response = archiveBody("response", parsed?.data, folder, files, sharedPath);
     if (isSvgMediaType(parsed?.data.requestMediaType)) Object.assign(request, { svg: true, svgPreview: svgPreviews?.request });
     if (isSvgMediaType(parsed?.data.mediaType)) Object.assign(response, { svg: true, svgPreview: svgPreviews?.response });
     if (!parsed && !request.path && !response.path) continue;
+    for (const file of [request, response]) {
+      const size = fileSizes.get(file.path);
+      if (size !== undefined) file.size = size;
+    }
 
     records.push({
       earlier: true,

@@ -386,8 +386,12 @@ test("different request timestamps and identical response bytes open the same li
     const savedSection = (await report.text()).split('<section id="issues">')[0];
     const links = [...savedSection.matchAll(/href="(\.\/[^"]+\/response%20\(1\)\.txt)"/g)].map((match) => match[1]);
     const targets = links.map((href) => decodeURIComponent(new URL(href, `file:///${reportPath}`).pathname.slice(1)));
-    assert.deepEqual(targets, [savedPayload, savedPayload]);
-    assert.deepEqual(await Promise.all(targets.map((path) => files.get(path).text())), ["Café", "Café"]);
+    assert.deepEqual(targets, [savedPayload]);
+    assert.equal(await files.get(targets[0]).text(), "Café");
+    assert.match(savedSection, /1 file saved/);
+    assert.match(savedSection, /Source URL: <span>https:\/\/example\.test\/same<\/span>/);
+    assert.match(savedSection, /<div>5 bytes<\/div>/);
+    assert.deepEqual([...savedSection.matchAll(/href="#exchange-(\d+)"/g)].map(([, id]) => id), ["1", "2"]);
   }
 });
 

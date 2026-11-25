@@ -257,11 +257,13 @@ export async function exportPayloads(
       request: {
         status: request.status,
         path: savedPath(requestFile),
+        size: requestBodyFile?.data.size,
         ...await svgFields(requestMediaType, savedPath(requestFile), requestBodyFile, readSvgPreview),
       },
       response: {
         status: response.status,
         path: responsePath,
+        size: responseBodyFile?.data.size,
         source: response.source,
         ...await svgFields(metadata.mediaType, responsePath, responseBodyFile, readSvgPreview),
       },

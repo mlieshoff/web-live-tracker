@@ -27,7 +27,16 @@ async function readExchange(directory, files, exchanges, readSvgPreview) {
       // Keep the saved payloads when the raw record cannot be opened.
     }
   }
-  const entry = { directory, files: names, index };
+  const sizes = {};
+  for (const name of names) {
+    if (rawRecordName.test(name)) continue;
+    try {
+      sizes[name] = (await files.get(name)()).size;
+    } catch {
+      // The file may still be listed when its size is unavailable.
+    }
+  }
+  const entry = { directory, files: names, index, sizes };
   if (!index) return entry;
 
   let metadata;

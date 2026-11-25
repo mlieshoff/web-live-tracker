@@ -31,6 +31,7 @@ test("selected folder files form a report with their actual metadata and names",
   assert.match(html, /exchange\.json/);
   assert.match(html, /Partial file/);
   assert.match(html, /Status 206/);
+  assert.match(html, /<div>0 bytes<\/div>/);
   assert.doesNotMatch(html, /response\.html|Downloads history/);
 });
 
@@ -136,7 +137,11 @@ test("rebuilt reports show neutral SVG captures under Images, including a shared
   assert.equal(records[0].response.path, records[1].response.path);
   assert.match(html, /<h3 id="files-images">Images<\/h3><ul class="file-gallery"[^>]*><li><div id="svg-view-1"/);
   assert.match(html, /target="_blank" rel="noopener noreferrer" href="#svg-view-1"><img class="thumbnail" src="data:image\/svg\+xml;base64,/);
-  assert.equal((html.match(/href="#svg-view-1"/g) ?? []).length, 2);
+  const savedFiles = html.split('<section id="files">')[1].split("</section>")[0];
+  assert.equal((savedFiles.match(/href="#svg-view-1"/g) ?? []).length, 1);
+  assert.equal((savedFiles.match(/Source URL:/g) ?? []).length, 1);
+  assert.deepEqual([...savedFiles.matchAll(/href="#exchange-(\d+)"/g)].map(([, id]) => id), ["1", "2"]);
+  assert.ok(savedFiles.includes(`<div>${svg.length} bytes</div>`));
   assert.match(html, /target="_blank" rel="noopener noreferrer" href="[^"]+response\.txt">Open saved file/);
   assert.equal((html.match(/data:image\/svg\+xml;base64,/g) ?? []).length, 1);
   assert.doesNotMatch(html, /<svg|<object|<embed|<iframe|<h3>Documents/);
