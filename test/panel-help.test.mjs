@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
+import { reportMessages } from "../shared/report-language.mjs";
 
 const panelUrl = new URL("../shared/panel.mjs", import.meta.url);
 const markup = readFileSync(new URL("../shared/panel.html", import.meta.url), "utf8");
@@ -9,12 +10,17 @@ test("the question-mark button targets a named modal with a native close control
   assert.match(markup, /<button id="open-help"[^>]*type="button" aria-label="Help" aria-haspopup="dialog">\?<\/button>[\s\S]*<dialog id="help-dialog" aria-labelledby="help-title">[\s\S]*<h2 id="help-title"[\s\S]*<form method="dialog">\s*<button type="submit"[^>]*autofocus>/);
 });
 
+test("the panel places the tip after the capture counters and save errors", () => {
+  assert.match(markup, /<dl class="capture-counts">[\s\S]*<details id="save-errors"[\s\S]*<\/details>\s*<aside class="panel-tip" aria-labelledby="panel-tip-heading">/);
+});
+
 for (const browserName of ["chrome", "firefox"]) {
-  test(`the ${browserName} panel switches its help, validation and active capture labels together`, () =>
-    verifyPanelSwitching(browserName));
+  test(`the ${browserName} panel localizes its controls and rotates the tip`, ({ mock }) =>
+    verifyPanelSwitching(browserName, mock));
 }
 
-async function verifyPanelSwitching(browserName) {
+async function verifyPanelSwitching(browserName, mock) {
+  mock.timers.enable({ apis: ["setInterval"] });
   const { document, elements, labels, tooltips } = panelDocument();
   const storage = new Map([["panel-language", "de"]]);
   const requestFinished = new Set();
@@ -53,6 +59,18 @@ async function verifyPanelSwitching(browserName) {
   const status = elements.get("capture-status");
   const error = elements.get("research-id-error");
   const networkTip = elements.get("network-monitor-tip");
+  const tipHeading = elements.get("panel-tip-heading");
+  const tip = elements.get("panel-tip-text");
+  const initialTip = tip.textContent;
+  const tipIndex = reportMessages.de.tips.indexOf(initialTip);
+  assert.equal(tipHeading.textContent, "Tipp des Tages");
+  assert.ok(tipIndex >= 0);
+  mock.timers.tick(59_999);
+  assert.equal(tip.textContent, initialTip);
+  mock.timers.tick(1);
+  assert.ok(reportMessages.de.tips.includes(tip.textContent));
+  assert.notEqual(tip.textContent, initialTip);
+  const rotatedTipIndex = reportMessages.de.tips.indexOf(tip.textContent);
   assert.equal(networkTip.hidden, false);
   assert.match(networkTip.textContent, browserName === "firefox"
     ? /Firefox.*Netzwerkanalyse.*HTTP-Cache deaktivieren/
@@ -73,6 +91,8 @@ async function verifyPanelSwitching(browserName) {
   language.value = "en";
   language.dispatchEvent(new Event("change"));
   assert.match(error.textContent, /^Use 1–64/);
+  assert.equal(tipHeading.textContent, "Tip of the day");
+  assert.equal(tip.textContent, reportMessages.en.tips[rotatedTipIndex]);
   assert.match(networkTip.textContent, browserName === "firefox"
     ? /Firefox.*Network tab.*Disable HTTP Cache/
     : /Chrome.*Network tab.*Disable cache/);

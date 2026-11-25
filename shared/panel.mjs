@@ -2,6 +2,7 @@ import { readGrantedCaptureDirectory } from "./capture-folder.mjs";
 import { validateResearchId } from "./export.mjs";
 import { createLiveCapture } from "./live-capture.mjs";
 import { panelMessages, panelTooltips, readPanelLanguage, savePanelLanguage, translateDiagnostic } from "./panel-language.mjs";
+import { reportMessages } from "./report-language.mjs";
 import { browserName, openCaptureFolderPicker, openCaptureReport, readResponseContent, requestFinished, saveCaptureReport, saveExtensionFile } from "../browser/browser-api.mjs";
 
 const form = document.querySelector("#capture-form");
@@ -38,6 +39,10 @@ let language = readPanelLanguage(localStorage);
 let messages;
 const networkTip = document.querySelector("#network-monitor-tip");
 networkTip.hidden = false;
+const tipHeading = document.querySelector("#panel-tip-heading");
+const tipText = document.querySelector("#panel-tip-text");
+const tipIntervalMs = 60_000;
+let tipIndex = Math.floor(Math.random() * reportMessages[language].tips.length);
 
 function showText(element, value) {
   if (element.textContent !== value) {
@@ -66,6 +71,12 @@ function renderReportMessage() {
   showText(reportError, typeof message === "function" ? message(argument) : message);
 }
 
+function showTip() {
+  const { tipOfTheDay, tips } = reportMessages[language];
+  showText(tipHeading, tipOfTheDay);
+  showText(tipText, tips[tipIndex]);
+}
+
 function applyLanguage() {
   messages = panelMessages[language];
   document.documentElement.lang = language;
@@ -80,6 +91,7 @@ function applyLanguage() {
     element.setAttribute("aria-description", tooltip);
   }
   showText(networkTip, messages.networkMonitorTip[browserName]);
+  showTip();
   showText(idError, hasResearchIdError ? messages.invalidResearchId : "");
   showSavePath(displayedResearchId);
   if (lastStatus) {
@@ -98,6 +110,11 @@ languageSelect.addEventListener("change", () => {
 });
 helpButton.addEventListener("click", () => helpDialog.showModal());
 applyLanguage();
+setInterval(() => {
+  const next = Math.floor(Math.random() * (reportMessages[language].tips.length - 1));
+  tipIndex = next >= tipIndex ? next + 1 : next;
+  showTip();
+}, tipIntervalMs);
 
 function showSaveErrors(failed, errorCount, errors) {
   saveErrors.hidden = failed === 0;
