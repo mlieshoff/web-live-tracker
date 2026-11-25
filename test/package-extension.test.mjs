@@ -135,6 +135,7 @@ for (const [version, outcome] of [
   test(`the story version gate ${outcome}`, (t) => {
     const repository = createRepository(t);
     repository.write('VERSION', `${version}\n`);
+    repository.write('shared/panel.html', '<title>Story change</title>');
     for (const browser of ['chrome', 'firefox']) {
       repository.write(`${browser}/manifest.json`, JSON.stringify({ version }));
     }
