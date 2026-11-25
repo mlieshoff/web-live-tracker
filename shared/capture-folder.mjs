@@ -78,12 +78,18 @@ async function readExchanges(exchanges) {
   return entries;
 }
 
+export class UnexpectedCaptureFolderError extends Error {
+  constructor(researchId) {
+    super(`Choose Downloads/web-live-tracker/${researchId} or its web-live-tracker folder.`);
+  }
+}
+
 export async function readSelectedCaptureFiles(files, researchId) {
   validateResearchId(researchId);
   const exchanges = new Map();
   const selected = files[0]?.webkitRelativePath.split("/")[0];
   if (selected !== researchId && selected !== "web-live-tracker") {
-    throw new Error(`Choose Downloads/web-live-tracker/${researchId} or its web-live-tracker folder.`);
+    throw new UnexpectedCaptureFolderError(researchId);
   }
 
   const sameName = selected === researchId && researchId === "web-live-tracker";
@@ -124,7 +130,7 @@ export async function readCaptureDirectory(handle, researchId) {
     else return [];
   }
   if (handle.name !== researchId) {
-    throw new Error(`Choose Downloads/web-live-tracker/${researchId} or its web-live-tracker folder.`);
+    throw new UnexpectedCaptureFolderError(researchId);
   }
 
   const exchanges = new Map();

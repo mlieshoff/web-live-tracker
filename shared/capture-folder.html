@@ -7,9 +7,9 @@
   <script type="module" src="capture-folder-page.mjs"></script>
   <main>
     <h1>Choose research folder</h1>
-    <p>Select <strong id="expected-folder"></strong> or the <strong>web-live-tracker</strong> folder that contains it.</p>
+    <p><span id="folder-instruction-start">Select </span><strong id="expected-folder"></strong><span id="folder-instruction-end"> or the web-live-tracker folder that contains it.</span></p>
     <button id="choose-folder" type="button" hidden>Choose folder</button>
-    <input id="folder-files" type="file" webkitdirectory aria-label="Choose research folder" hidden>
+    <input id="folder-files" type="file" webkitdirectory hidden>
     <p id="folder-status" role="status"></p>
   </main>
 </html>
