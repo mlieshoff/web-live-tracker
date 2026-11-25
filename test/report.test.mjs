@@ -107,13 +107,13 @@ test("the German report translates navigation, saved files and warnings while pr
   assert.deepEqual(expected.filter((text) => !html.includes(text)), []);
 });
 
-test("captureReport sorts each file gallery and table A–Z by displayed name regardless of case", async () => {
+test("captureReport sorts file galleries, lists, and tables A–Z by displayed name regardless of case", async () => {
   const startedAt = new Date("2026-01-01T10:00:00Z");
   const categories = [
-    ["images", "png"],
-    ["media", "mp4"],
-    ["documents", "pdf"],
-    ["otherFiles", "zip"],
+    ["images", "png", "gallery"],
+    ["media", "mp4", "gallery"],
+    ["documents", "pdf", "list"],
+    ["otherFiles", "zip", "table"],
   ];
   const records = categories.flatMap(([, extension]) =>
     ["Zebra", "banana", "Apple"].map((name, index) => ({
@@ -132,17 +132,17 @@ test("captureReport sorts each file gallery and table A–Z by displayed name re
   const html = await captureReport({ researchId: "study", startedAt, records }).text();
 
   const savedFiles = html.split('<section id="files">')[1].split("</section>")[0];
-  const groups = [...savedFiles.matchAll(/<(ul class="file-gallery" role="list"|table) aria-labelledby="files-([^"]+)">(.*?)(?:<\/ul>|<\/table>)/gs)];
+  const groups = [...savedFiles.matchAll(/<(ul(?: class="file-gallery" role="list")?|table) aria-labelledby="files-([^"]+)">(.*?)(?:<\/ul>|<\/table>)/gs)];
   assert.deepEqual(
     groups.map(([, element, category, entries]) => [
       category,
-      element.startsWith("ul") ? "gallery" : "table",
+      element.includes("file-gallery") ? "gallery" : element === "ul" ? "list" : "table",
       [...entries.matchAll(/>([^<>]+) · example\.test \(received\)<\/a>/g)].map(([, name]) => name),
       [...entries.matchAll(/href="#exchange-\d+">Capture details<\/a>/g)].length,
     ]),
-    categories.map(([category, extension]) => [
+    categories.map(([category, extension, layout]) => [
       category,
-      ["images", "media"].includes(category) ? "gallery" : "table",
+      layout,
       [`Apple.${extension}`, `banana.${extension}`, `Zebra.${extension}`],
       3,
     ]),

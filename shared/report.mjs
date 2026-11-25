@@ -178,6 +178,10 @@ export function captureReport({ researchId, startedAt, records, unreadable = 0, 
         ).join("");
         return `${heading}<ul class="file-gallery" role="list" aria-labelledby="files-${group}">${tiles}</ul>`;
       }
+      if (group === "documents") {
+        const items = files.map(({ link, details }) => `<li>${link} · ${details}</li>`).join("");
+        return `${heading}<ul aria-labelledby="files-${group}">${items}</ul>`;
+      }
       const rows = files.map(({ link, details }) => `<tr><td>${link}</td><td>${details}</td></tr>`).join("");
       return `${heading}<table aria-labelledby="files-${group}"><thead><tr><th scope="col">${messages.file}</th><th scope="col">${messages.captureDetails}</th></tr></thead><tbody>${rows}</tbody></table>`;
     })
@@ -200,7 +204,7 @@ export function captureReport({ researchId, startedAt, records, unreadable = 0, 
   th, td { border-bottom: 1px solid GrayText; padding: .55rem; text-align: start; vertical-align: top; }
   .file-gallery {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(min(100%, 11rem), 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 8rem), 1fr));
     gap: 1rem;
     list-style: none;
     padding: 0;
