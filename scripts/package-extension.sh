@@ -13,46 +13,7 @@ case "$browser" in
 esac
 
 revision=$(git -C "$project_root" rev-parse --verify HEAD)
-node - "$project_root" "$revision" <<'NODE'
-const { execFileSync } = require('node:child_process');
-
-const [projectRoot, revision] = process.argv.slice(2);
-
-function readCommittedFile(path) {
-  try {
-    return execFileSync('git', ['-C', projectRoot, 'show', `${revision}:${path}`], {
-      encoding: 'utf8',
-      stdio: ['ignore', 'pipe', 'ignore'],
-    });
-  } catch {
-    throw new Error(`Cannot read ${path} from commit ${revision}.`);
-  }
-}
-
-try {
-  const version = readCommittedFile('VERSION').replace(/\r?\n$/, '');
-  if (!/^(0|[1-9][0-9]*)(\.(0|[1-9][0-9]*)){2}$/.test(version)) {
-    throw new Error('VERSION must contain one MAJOR.MINOR.PATCH version without leading zeroes.');
-  }
-
-  for (const browser of ['chrome', 'firefox']) {
-    const path = `${browser}/manifest.json`;
-    const contents = readCommittedFile(path);
-    let manifest;
-    try {
-      manifest = JSON.parse(contents);
-    } catch {
-      throw new Error(`${path} must contain valid JSON.`);
-    }
-    if (manifest?.version !== version) {
-      throw new Error(`${path} version must match VERSION (${version}).`);
-    }
-  }
-} catch (error) {
-  console.error(error.message);
-  process.exitCode = 1;
-}
-NODE
+node "$project_root/scripts/check-extension-version.mjs" "$revision"
 
 output_directory="$project_root/dist"
 mkdir -p -- "$output_directory"

@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Web Live Tracker",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "Capture request metadata from the Chrome tab you inspect.",
   "permissions": ["downloads", "downloads.open"],
   "devtools_page": "shared/devtools.html"

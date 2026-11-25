@@ -6,6 +6,7 @@ Input: approved User Story and acceptance criteria. Output: task issues, tested 
 - Coordinate one integration branch `story/<story-number>-<slug>` from the latest `origin/main`.
 - Create each `task/<task-number>-<slug>` branch from the integration branch; do not branch from unrelated tasks.
 - Implement only the assigned task, following `.ai/standards/`.
+- Commit the human-selected version in `VERSION`, `chrome/manifest.json`, and `firefox/manifest.json` together. It must be higher than the current `origin/main` version.
 - Add meaningful unit tests and regression tests for defects.
 - Run Maven verification before committing and pushing; report blocked external dependencies or test failures.
 - Commit with Conventional Commits and include issue references.

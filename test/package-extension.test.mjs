@@ -8,6 +8,7 @@ import { inflateRawSync } from 'node:zlib';
 
 const projectRoot = fileURLToPath(new URL('..', import.meta.url));
 const packageScript = 'scripts/package-extension.sh';
+const checkScript = 'scripts/check-extension-version.mjs';
 
 function readPackagedManifest(archive) {
   const zip = readFileSync(archive);
@@ -46,7 +47,9 @@ function createRepository(t) {
   for (const folder of ['scripts', 'shared', 'chrome', 'firefox']) {
     mkdirSync(join(directory, folder));
   }
-  copyFileSync(join(projectRoot, packageScript), join(directory, packageScript));
+  for (const script of [packageScript, checkScript]) {
+    copyFileSync(join(projectRoot, script), join(directory, script));
+  }
   write('.gitignore', '/dist/\n');
   write('VERSION', '1.2.3\n');
   write('shared/panel.html', '<title>Fixture</title>');
@@ -61,6 +64,10 @@ function createRepository(t) {
     commit,
     remove: (path) => rmSync(join(directory, path)),
     package: (browser) => spawnSync('sh', [packageScript, browser], {
+      cwd: directory,
+      encoding: 'utf8',
+    }),
+    checkVersion: (base) => spawnSync(process.execPath, [checkScript, 'HEAD', base], {
       cwd: directory,
       encoding: 'utf8',
     }),
@@ -119,3 +126,43 @@ for (const [manifestBrowser, packageBrowser] of [['chrome', 'firefox'], ['firefo
     assert.deepEqual(readFileSync(archive), original);
   });
 }
+
+for (const [version, outcome] of [
+  ['1.2.3', 'rejects a reused version'],
+  ['1.1.99', 'rejects a lower version'],
+  ['1.10.0', 'accepts a numeric increase across a digit boundary'],
+]) {
+  test(`the story version gate ${outcome}`, (t) => {
+    const repository = createRepository(t);
+    repository.write('VERSION', `${version}\n`);
+    repository.write('shared/panel.html', '<title>Story change</title>');
+    for (const browser of ['chrome', 'firefox']) {
+      repository.write(`${browser}/manifest.json`, JSON.stringify({ version }));
+    }
+    repository.commit();
+
+    const result = repository.checkVersion('HEAD^');
+    if (version === '1.10.0') {
+      assert.equal(result.status, 0, result.stderr);
+    } else {
+      assert.equal(result.status, 1);
+      assert.match(result.stderr, /must be higher than the base version \(1\.2\.3\)/);
+    }
+  });
+}
+
+test('the story version gate rejects an invalid version and an inconsistent manifest', (t) => {
+  const repository = createRepository(t);
+  repository.write('VERSION', '1.3.0-preview\n');
+  repository.commit();
+  const invalid = repository.checkVersion('HEAD^');
+  assert.equal(invalid.status, 1);
+  assert.match(invalid.stderr, /VERSION must contain one MAJOR\.MINOR\.PATCH version/);
+
+  repository.write('VERSION', '1.3.0\n');
+  repository.write('chrome/manifest.json', '{"version":"1.3.0"}');
+  repository.commit();
+  const mismatch = repository.checkVersion('HEAD~2');
+  assert.equal(mismatch.status, 1);
+  assert.match(mismatch.stderr, /firefox\/manifest.json version must match VERSION/);
+});

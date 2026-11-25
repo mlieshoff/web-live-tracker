@@ -11,6 +11,7 @@
 
 - Transform chat feature request into a template-compliant User Story.
 - Write verifiable acceptance criteria and explicit exclusions.
+- Obtain and record the human-selected release version before implementing the version update for a story PR targeting `main`.
 - Create GitHub issue and record its number.
 
 ## 2. Plan and tasks
@@ -25,6 +26,7 @@
 - Verify task branch with Maven; commit and push.
 - Integrate task branches into story branch only (merge or cherry-pick with explicit traceability).
 - Resolve conflicts and rerun full Maven verification on story branch.
+- Commit the selected version in `VERSION` and both browser manifests together. Verify the integrated branch with `node scripts/check-extension-version.mjs HEAD origin/main`.
 
 ## 4. QA gate
 
