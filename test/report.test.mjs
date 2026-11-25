@@ -57,21 +57,23 @@ test("an empty capture can still produce a readable report", async () => {
 test("report players use local files and appear once per complete playable capture", async () => {
   const root = "web-live-tracker/study/2026-01-01/example.test/media";
   const date = new Date("2026-01-01T10:00:00Z");
-  function record(resource, file, { status = 200, mediaType, source } = {}) {
+  function record(resource, file, { status = 200, mediaType, source, responseRange, size } = {}) {
     return {
-      metadata: { timestamp: date.toISOString(), url: `https://example.test/${resource}`, method: "GET", status, mediaType },
+      metadata: { timestamp: date.toISOString(), url: `https://example.test/${resource}`, method: "GET", status, mediaType, responseRange },
       indexPath: `${root}/${resource}/exchange.json`,
       request: { status: "absent", path: null },
-      response: { status: "saved", path: `${root}/${file}`, source },
+      response: { status: "saved", path: `${root}/${file}`, source, size },
     };
   }
   const records = [
     record("photo", "photo/response (1).png"),
     record("repeated-photo", "photo/response (1).png"),
+    record("full-range", "full-range/response.mp4", { status: 206, responseRange: "bytes 0-99/100", size: 100 }),
     record("movie", "movie/response.webm"),
     record("repeated-movie", "movie/response.webm"),
     record("partial-movie", "partial/response.webm", { status: 206 }),
-    record("partial-song", "partial-song/response.mp3", { status: 206 }),
+    record("partial-song", "partial-song/response.mp3", { status: 206, responseRange: "bytes 0-99/200", size: 100 }),
+    record("truncated", "truncated/response.mp4", { status: 206, responseRange: "bytes 0-99/100", size: 99 }),
     record("song", "song/response.mp3"),
     record("voice", "voice/response.webm", { mediaType: "audio/webm; codecs=opus" }),
     record("refetched", "refetched/response (1).mp4", { status: 206, source: "refetched" }),
@@ -83,6 +85,7 @@ test("report players use local files and appear once per complete playable captu
   assert.match(html, /<img class="thumbnail" src="[^"]*photo\/response%20\(1\)\.png"/);
   const players = [...html.matchAll(/<(audio|video) class="media-player" src="\.\/([^"]+)" controls preload="none" aria-label="([^"]+)"><\/\1>/g)];
   assert.deepEqual(players.map(([, tag, path, label]) => [tag, path.split("/").slice(-2).join("/"), label]), [
+    ["video", "full-range/response.mp4", "full-range · example.test (received)"],
     ["video", "movie/response.webm", "movie · example.test (received)"],
     ["video", "refetched/response%20(1).mp4", "refetched · example.test (received)"],
     ["audio", "song/response.mp3", "song · example.test (received)"],

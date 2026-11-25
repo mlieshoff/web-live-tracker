@@ -84,6 +84,13 @@ function mediaPlayer(file, caption, mediaType) {
   return `<${tag} class="media-player" src="${fileHref(file.path)}" controls preload="none" aria-label="${escapeHtml(caption)}"></${tag}>`;
 }
 
+function isPartialResponse(metadata, response) {
+  if (metadata?.status !== 206 || response?.source === "refetched") return false;
+  const range = /^bytes 0-(\d+)\/(\d+)$/i.exec(metadata.responseRange);
+  if (!range || !Number.isSafeInteger(response?.size) || response.size <= 0) return true;
+  return Number(range[1]) !== response.size - 1 || Number(range[2]) !== response.size;
+}
+
 function fileDescription(file, direction, messages) {
   if (file.path) return fileLink(file.path, direction === "response" ? messages.openReceivedFile : messages.openSentFile);
   if (file.status === "absent") {
@@ -155,7 +162,7 @@ export function captureReport({ researchId, startedAt, records, unreadable = 0, 
     sites.add(host);
     const name = resource ? `${resource} · ${host}` : host;
     const details = `<a href="#exchange-${index + 1}">${messages.captureDetails}</a>`;
-    const partial = metadata?.status === 206 && response?.source !== "refetched";
+    const partial = isPartialResponse(metadata, response);
     const notes = [];
 
     if (error) {
