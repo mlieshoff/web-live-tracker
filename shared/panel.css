@@ -72,6 +72,14 @@ h1 {
   letter-spacing: -0.035em;
 }
 
+.extension-version {
+  color: var(--muted);
+  font-size: 0.875rem;
+  font-weight: 500;
+  letter-spacing: normal;
+  white-space: nowrap;
+}
+
 .panel-tools {
   display: flex;
   align-items: center;

@@ -19,7 +19,7 @@ async function verifyPanelSwitching(browserName) {
   const storage = new Map([["panel-language", "de"]]);
   const requestFinished = new Set();
   const browser = {
-    runtime: { onMessage: { addListener() {} } },
+    runtime: { getManifest: () => ({ version: "1.2.3" }), onMessage: { addListener() {} } },
     devtools: { network: { onRequestFinished: {
       addListener: (listener) => requestFinished.add(listener),
       removeListener: (listener) => requestFinished.delete(listener),
@@ -45,6 +45,7 @@ async function verifyPanelSwitching(browserName) {
   );
   await import(`data:text/javascript,${encodeURIComponent(source)}`);
 
+  assert.equal(elements.get("extension-version").textContent, "v1.2.3");
   const field = elements.get("research-id");
   const language = elements.get("panel-language");
   const help = elements.get("open-help");

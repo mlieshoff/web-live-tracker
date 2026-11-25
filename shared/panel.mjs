@@ -21,6 +21,7 @@ const pendingCount = document.querySelector("#pending-count");
 const openReport = document.querySelector("#open-report");
 const reportError = document.querySelector("#report-error");
 const runtime = (globalThis.browser ?? globalThis.chrome).runtime;
+showText(document.querySelector("#extension-version"), `v${runtime.getManifest().version}`);
 let pickerUrl;
 let readyReport;
 let selectedReportFolder;
