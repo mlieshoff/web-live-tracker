@@ -22,10 +22,10 @@
 
 ## 3. Implement
 
-- Implement Java changes with JUnit 5 tests, within scope.
-- Verify task branch with Maven; commit and push.
+- Implement the task within scope and cover behavior changes with relevant `node:test` tests.
+- Run `node --test` from the repository root on the task branch; commit and push.
 - Integrate task branches into story branch only (merge or cherry-pick with explicit traceability).
-- Resolve conflicts and rerun full Maven verification on story branch.
+- Resolve conflicts and rerun `node --test` on story branch.
 - Commit the selected version in `VERSION` and both browser manifests together. Verify the integrated branch with `node scripts/check-extension-version.mjs HEAD origin/main`.
 
 ## 4. QA gate
@@ -51,4 +51,4 @@
 
 ## Failure handling
 
-- Missing permissions, inaccessible GitHub, unavailable Maven/JDK, dirty working tree, failed tests or unsafe out-of-workspace requests are BLOCKED, not permission to bypass policy.
+- Missing permissions, inaccessible GitHub, unavailable Node.js, dirty working tree, failed tests or unsafe out-of-workspace requests are BLOCKED, not permission to bypass policy.

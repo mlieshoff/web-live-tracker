@@ -2,11 +2,11 @@
 
 ## Purpose and Scope
 
-These rules apply to all AI-assisted changes in this Java/Maven project. The goal is a coherent, maintainable, testable architecture without unnecessary complexity. The existing project architecture is authoritative unless the human explicitly approves a change.
+These rules apply to all AI-assisted changes in this Chrome and Firefox browser extension. The goal is a coherent, maintainable, testable architecture without unnecessary complexity. The existing project architecture is authoritative unless the human explicitly approves a change.
 
 ## 1. Understand Before Changing
 
-- Inspect relevant modules, packages, interfaces, dependencies, and tests before implementation.
+- Inspect relevant modules, entry points, dependencies, and tests before implementation.
 - Identify the existing architectural style and follow it; do not impose Clean Architecture, Hexagonal Architecture, DDD, CQRS, or microservices by default.
 - Check existing Architecture Decision Records (ADRs) and project documentation when present.
 - If the architecture is unclear, make the smallest compatible change and explain assumptions. Ask before decisions that materially affect public APIs, persistence, module boundaries, security, or deployment.
@@ -14,31 +14,28 @@ These rules apply to all AI-assisted changes in this Java/Maven project. The goa
 
 ## 2. Structure and Responsibilities
 
-- Organize code around existing project modules and package conventions.
-- Keep domain rules and business decisions separate from transport, persistence, and infrastructure concerns where practical.
-- Controllers or API adapters should handle protocol-level concerns, validation, and mapping; avoid embedding substantial business logic.
-- Services or use cases should coordinate business operations and transactions, not become miscellaneous utility containers.
-- Repositories or persistence adapters should encapsulate data access, not decide business policy.
-- Avoid circular dependencies between packages or Maven modules.
-- Keep each class focused on a coherent responsibility; do not split classes merely to satisfy arbitrary size limits.
+- Keep shared panel, capture, export, and report behavior in `shared/`.
+- Keep browser-specific manifests, entry points, and API adapters in `chrome/` and `firefox/`. Preserve the adapter paths expected by extension packaging.
+- Keep Node.js verification and release tooling in `scripts/` and tests in `test/`. Keep Node.js built-ins out of extension modules.
+- Keep browser API calls at the existing boundaries and avoid circular module dependencies.
 
 ## 3. Dependencies and Abstractions
 
 - Prefer existing libraries, components, and established patterns.
-- Prefer standard Java APIs where sufficient.
-- Introduce an interface when it represents a meaningful contract, supports multiple implementations, or establishes a useful architectural boundary—not automatically for every class.
+- Prefer standard browser APIs or Node.js built-ins in their respective runtimes where sufficient.
+- Introduce an abstraction when it represents a meaningful contract, such as the browser API adapters.
 - Favor composition over inheritance when it reduces coupling.
 - Use dependency injection consistently with the existing project; avoid service locators and hidden global mutable state.
-- Do not introduce new frameworks, Maven modules, architectural layers, or dependencies without human approval.
+- Do not introduce new frameworks, modules, architectural layers, or dependencies without human approval.
 - Avoid speculative extensibility, generic frameworks, and unnecessary indirection (KISS and YAGNI).
 
 ## 4. Data and API Contracts
 
 - Preserve existing public APIs and observable behavior unless a change is explicitly requested.
-- Treat request/response DTOs, serialization formats, database schemas, event formats, and message contracts as compatibility-sensitive.
+- Treat capture and report formats, extension messages, and storage formats as compatibility-sensitive.
 - Validate input at appropriate boundaries and provide actionable errors without exposing secrets.
 - Keep mapping responsibilities explicit and consistent; do not leak persistence-specific objects across boundaries unless established project conventions require it.
-- Define transaction boundaries deliberately and avoid hidden network or database calls inside mapping and presentation code.
+- Keep network and storage side effects explicit.
 - Require human approval before schema migrations, breaking API changes, event contract changes, or destructive data operations.
 
 ## 5. Concurrency, Reliability, and Security
@@ -54,11 +51,11 @@ These rules apply to all AI-assisted changes in this Java/Maven project. The goa
 ## 6. Testing and Observability
 
 - Design components so core behavior can be tested without live external systems where practical.
-- Follow `.ai/standards/testing.md` for JUnit 5, AssertJ, test naming, exactly one top-level assertion call, and recursive comparisons.
+- Follow `.ai/standards/testing.md` for Node.js test and assertion conventions.
 - Test behavior and contracts rather than implementation details.
 - Add integration tests when behavior crosses real component boundaries and unit tests alone are insufficient.
 - Use the project's existing logging and metrics conventions; avoid noisy or sensitive logs.
-- Run `./mvnw verify` if the wrapper exists, otherwise `mvn verify`, and report any failures honestly.
+- Run `node --test` from the repository root, and report any failures honestly.
 
 ## 7. Change Scope and Architecture Decisions
 
@@ -110,12 +107,12 @@ For significant approved decisions, record an ADR in `docs/adr/` if that convent
 
 Before marking a story ready for human review, verify:
 
-- [ ] The change follows existing modules, packages, and architectural conventions.
+- [ ] The change follows existing modules and architectural conventions.
 - [ ] Responsibilities and dependency direction remain coherent.
 - [ ] No unapproved dependencies, frameworks, modules, or architectural patterns were added.
 - [ ] Public contracts and persistence schemas are preserved or approved changes are documented.
 - [ ] Security and tenant boundaries remain intact where applicable.
-- [ ] Relevant unit/integration tests exist and Maven verification results are reported.
+- [ ] Relevant unit/integration tests exist and the results of `node --test` are reported.
 - [ ] No unrelated refactoring or changes outside the project workspace occurred.
 - [ ] Architectural tradeoffs and any remaining risks are documented in the Pull Request.
 
