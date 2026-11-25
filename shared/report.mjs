@@ -1,6 +1,24 @@
 import { translateDiagnostic } from "./panel-language.mjs";
 import { reportMessages } from "./report-language.mjs";
 
+// The downloaded report authorizes only this fixed script. Keep the hash in sync with its exact text.
+const tipScript = `
+(() => {
+  const output = document.querySelector("#report-tip");
+  const tips = document.querySelector("#report-tips").content.querySelectorAll("span");
+  let current = Math.floor(Math.random() * tips.length);
+  output.textContent = tips[current].textContent;
+
+  const tipIntervalMs = 60_000;
+  setInterval(() => {
+    const next = Math.floor(Math.random() * (tips.length - 1));
+    current = next >= current ? next + 1 : next;
+    output.textContent = tips[current].textContent;
+  }, tipIntervalMs);
+})();
+`;
+const tipScriptHash = "sha256-9Wq0ZUxigNE2psSs+utQcmJnAIQZ1/3ae4P54e6QJI8=";
+
 import { isImageFilename } from "./payload.mjs";
 
 const groups = ["images", "media", "documents", "otherFiles"];
@@ -256,7 +274,7 @@ export function captureReport({ researchId, startedAt, records, unreadable = 0, 
 <html lang="${locale}">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src file: data:; media-src file:; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src '${tipScriptHash}'; img-src file: data:; media-src file:; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'">
 <title>${escapeHtml(researchId)} · ${messages.title}</title>
 <style>
   :root { color-scheme: light dark; font: 16px/1.55 system-ui, sans-serif; }
@@ -265,6 +283,9 @@ export function captureReport({ researchId, startedAt, records, unreadable = 0, 
   section { border-top: 1px solid GrayText; margin-top: 2rem; }
   li, details { margin-block: .55rem; }
   summary { cursor: pointer; }
+  .tip-of-the-day { margin-block: 1.5rem 0; padding: .75rem 1rem; border-inline-start: .25rem solid GrayText; }
+  .tip-of-the-day h3, .tip-of-the-day p { margin: 0; }
+  .tip-of-the-day p { margin-block-start: .25rem; }
   .earlier-captures ul { margin-block: .25rem .5rem; padding-inline-start: 1.25rem; }
   table { width: 100%; border-collapse: collapse; }
   th, td { border-bottom: 1px solid GrayText; padding: .55rem; text-align: start; vertical-align: top; }
@@ -354,6 +375,11 @@ export function captureReport({ researchId, startedAt, records, unreadable = 0, 
   <section id="files">
     <h2>${messages.savedFiles}</h2>
     ${categories || `<p>${messages.noFiles}</p>`}
+    <aside class="tip-of-the-day" aria-labelledby="report-tip-heading">
+      <h3 id="report-tip-heading">${messages.tipOfTheDay}</h3>
+      <p id="report-tip">${escapeHtml(messages.tips[0])}</p>
+      <template id="report-tips">${messages.tips.map((tip) => `<span>${escapeHtml(tip)}</span>`).join("")}</template>
+    </aside>
   </section>
   <section id="issues">
     <h2>${messages.issues}</h2>
@@ -364,5 +390,6 @@ export function captureReport({ researchId, startedAt, records, unreadable = 0, 
     ${exchanges.join("") || (historyOnly ? `<p>${messages.noHistory}</p>` : `<p>${messages.noRequests}</p>`)}
   </section>
 </main>
+<script>${tipScript}</script>
 </html>`], { type: "text/html;charset=utf-8" });
 }
