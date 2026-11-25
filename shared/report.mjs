@@ -1,8 +1,9 @@
 import { translateDiagnostic } from "./panel-language.mjs";
 import { reportMessages } from "./report-language.mjs";
 
+import { isImageFilename } from "./payload.mjs";
+
 const groups = ["images", "media", "documents", "otherFiles"];
-const imageExtensions = new Set(["avif", "bmp", "gif", "jpg", "png", "tiff", "webp"]);
 const videoPreviewExtensions = new Set(["m4v", "mov", "mp4", "ogv", "webm"]);
 const mediaExtensions = new Set(["aac", "flac", "m4a", "m4v", "mkv", "mov", "mp3", "mp4", "mpeg", "ogg", "ogv", "ts", "wav", "webm"]);
 const documentExtensions = new Set(["csv", "json", "pdf", "tsv", "txt"]);
@@ -46,7 +47,7 @@ function fileExtension(file) {
 
 function fileGroup(file) {
   const extension = fileExtension(file);
-  if (file.svg || imageExtensions.has(extension)) return "images";
+  if (file.svg || isImageFilename(file.path)) return "images";
   if (mediaExtensions.has(extension)) return "media";
   if (documentExtensions.has(extension)) return "documents";
   return "otherFiles";
@@ -62,7 +63,7 @@ function mediaPreview(file, partial) {
 
   const extension = fileExtension(file);
   const href = fileHref(file.path);
-  if (imageExtensions.has(extension) && extension !== "tiff") {
+  if (isImageFilename(file.path) && extension !== "tiff") {
     return `<img class="thumbnail" src="${href}" alt="" loading="lazy" decoding="async">`;
   }
   if (!partial && videoPreviewExtensions.has(extension)) {
@@ -113,6 +114,13 @@ export function captureReport({ researchId, startedAt, records, unreadable = 0, 
   const fileOrder = new Intl.Collator(locale, { sensitivity: "accent" });
   const groupedFiles = new Map(groups.map((group) => [group, []]));
   const savedFiles = new Map();
+  const imageKeysByPath = new Map();
+  for (const { response } of records) {
+    if (response?.path && response.contentKey && fileGroup(response) === "images") {
+      const type = response.svg ? "svg" : fileExtension(response);
+      imageKeysByPath.set(response.path, `image:${type}:${response.contentKey}`);
+    }
+  }
   const sizeFormat = new Intl.NumberFormat(locale, { style: "unit", unit: "byte", unitDisplay: "long" });
   const issues = [];
   if (folderUnavailable) {
@@ -148,11 +156,14 @@ export function captureReport({ researchId, startedAt, records, unreadable = 0, 
         notes.push(`<li>${label} — ${description}</li>`);
         if (file.path) {
           const isPartial = direction === "response" && partial;
-          const entry = savedFiles.get(file.path) ?? {
+          const savedKey = imageKeysByPath.get(file.path) ?? file.path;
+          const entry = savedFiles.get(savedKey) ?? {
             file, name: resource ?? host, caption: `${name} (${label.toLowerCase()})`,
             partial: isPartial, sources: new Map(), size: file.size,
           };
-          if (file.svgPreview || (file.svg && !entry.file.svg)) entry.file = file;
+          if (file.svgPreview || (file.svg && !entry.file.svg)) {
+            entry.file = { ...file, path: entry.file.path };
+          }
           entry.size ??= file.size;
           entry.partial &&= isPartial;
           const source = entry.sources.get(sourceUrl) ?? [];
@@ -160,7 +171,7 @@ export function captureReport({ researchId, startedAt, records, unreadable = 0, 
             .filter(Boolean).join(" · ");
           source.push({ earlier, html });
           entry.sources.set(sourceUrl, source);
-          savedFiles.set(file.path, entry);
+          savedFiles.set(savedKey, entry);
         } else if (file.status !== "absent") {
           issues.push(`<li>${escapeHtml(name)} · ${label}. ${description} ${details}</li>`);
         }

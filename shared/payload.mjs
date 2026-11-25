@@ -37,6 +37,14 @@ const fileExtensions = new Map([
 
 const savedExtensions = new Set([...fileExtensions.values(), "bin", "txt"]);
 
+const imageExtensions = new Set([...fileExtensions]
+  .filter(([type]) => type.startsWith("image/"))
+  .map(([, extension]) => extension));
+
+export function isImageFilename(path) {
+  return imageExtensions.has(path.split(".").at(-1).toLowerCase());
+}
+
 export function isExportedBodyFilename(name, direction) {
   const match = typeof name === "string" && /^(request|response)(?: ?\(\d+\))?\.([a-z0-9]+)$/i.exec(name);
   return Boolean(match && match[1].toLowerCase() === direction && savedExtensions.has(match[2].toLowerCase()));
@@ -186,10 +194,10 @@ function bodyFile(name, body, mediaType) {
   return { filename, data: new Blob([body.data], { type }) };
 }
 
-async function responseKey(file, metadata, responseFiles) {
-  if (!file || !responseFiles || (metadata.status === 206 && !metadata.responseRange)) return null;
+export async function responseContentKey(data, metadata) {
+  if (!data || (metadata.status === 206 && !metadata.responseRange)) return null;
   try {
-    const digest = await crypto.subtle.digest("SHA-256", await file.data.arrayBuffer());
+    const digest = await crypto.subtle.digest("SHA-256", await data.arrayBuffer());
     const hash = Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
     const range = metadata.status === 206 ? metadata.responseRange : "full";
     return `${range}:${hash}`;
@@ -232,7 +240,7 @@ export async function exportPayloads(
     const requestBodyFile = bodyFile("request", request, requestMediaType);
     const requestFile = requestBodyFile ? await saveFile(`${base}/${requestBodyFile.filename}`, requestBodyFile.data) : null;
     const responseBodyFile = bodyFile("response", response, metadata.mediaType);
-    const key = await responseKey(responseBodyFile, metadata, responseFiles);
+    const key = responseFiles ? await responseContentKey(responseBodyFile?.data, metadata) : null;
     const reusedPath = key ? responseFiles.get(key) : undefined;
     const responseFile = responseBodyFile && !reusedPath
       ? await saveFile(`${base}/${responseBodyFile.filename}`, responseBodyFile.data) : null;
@@ -264,6 +272,7 @@ export async function exportPayloads(
         status: response.status,
         path: responsePath,
         size: responseBodyFile?.data.size,
+        contentKey: responsePath ? key : null,
         source: response.source,
         ...await svgFields(metadata.mediaType, responsePath, responseBodyFile, readSvgPreview),
       },
