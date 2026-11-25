@@ -99,10 +99,52 @@ test("the German report translates navigation, saved files and warnings while pr
 
   const expected = [
     '<html lang="de">', "<h1>study · Aufzeichnungsbericht</h1>", "1 Datei gespeichert",
-    'aria-label="Berichtsabschnitte"', "<h3>Audio und Video</h3>", "Frühere Aufzeichnung",
+    'aria-label="Berichtsabschnitte"', "<h3 id=\"files-media\">Audio und Video</h3>", "Frühere Aufzeichnung",
     "Unvollständige Datei", "Rohdatensatz öffnen (JSON)", "2 Rohdatensätze konnten nicht gelesen werden.",
     "Die frühere Datei fehlt im Rechercheordner.", "Die Dateien konnten nicht zum Speichern vorbereitet werden.",
     'href="./2026-01-01/example.test/video/response.mp4"',
   ];
   assert.deepEqual(expected.filter((text) => !html.includes(text)), []);
+});
+
+test("captureReport sorts file galleries, lists, and tables A–Z by displayed name regardless of case", async () => {
+  const startedAt = new Date("2026-01-01T10:00:00Z");
+  const categories = [
+    ["images", "png", "gallery"],
+    ["media", "mp4", "gallery"],
+    ["documents", "pdf", "list"],
+    ["otherFiles", "zip", "table"],
+  ];
+  const records = categories.flatMap(([, extension]) =>
+    ["Zebra", "banana", "Apple"].map((name, index) => ({
+      metadata: {
+        timestamp: startedAt.toISOString(),
+        url: `https://example.test/${name}.${extension}`,
+        method: "GET",
+        status: 200,
+      },
+      indexPath: `web-live-tracker/study/${index}/exchange.json`,
+      request: { status: "absent" },
+      response: { status: "saved", path: `web-live-tracker/study/${index}/response.${extension}` },
+    })),
+  );
+
+  const html = await captureReport({ researchId: "study", startedAt, records }).text();
+
+  const savedFiles = html.split('<section id="files">')[1].split("</section>")[0];
+  const groups = [...savedFiles.matchAll(/<(ul(?: class="file-gallery" role="list")?|table) aria-labelledby="files-([^"]+)">(.*?)(?:<\/ul>|<\/table>)/gs)];
+  assert.deepEqual(
+    groups.map(([, element, category, entries]) => [
+      category,
+      element.includes("file-gallery") ? "gallery" : element === "ul" ? "list" : "table",
+      [...entries.matchAll(/>([^<>]+) · example\.test \(received\)<\/a>/g)].map(([, name]) => name),
+      [...entries.matchAll(/href="#exchange-\d+">Capture details<\/a>/g)].length,
+    ]),
+    categories.map(([category, extension, layout]) => [
+      category,
+      layout,
+      [`Apple.${extension}`, `banana.${extension}`, `Zebra.${extension}`],
+      3,
+    ]),
+  );
 });

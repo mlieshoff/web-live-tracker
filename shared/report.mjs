@@ -28,20 +28,20 @@ function fileLink(path, label, preview) {
   return newTabLink(fileHref(path), label, preview);
 }
 
-function fileRow(file, caption, suffix, preview, svgViews, messages) {
+function fileEntryLink(file, caption, preview, svgViews, messages) {
   const view = file.svg && svgViews.get(file.path);
-  if (view) return `<li>${newTabLink(`#${view}`, caption)}${suffix}</li>`;
-  if (!file.svg || !preview) return `<li>${fileLink(file.path, caption, preview)}${suffix}</li>`;
+  if (view) return newTabLink(`#${view}`, caption);
+  if (!file.svg || !preview) return fileLink(file.path, caption, preview);
 
   const id = `svg-view-${svgViews.size + 1}`;
   svgViews.set(file.path, id);
-  return `<li id="${id}" class="svg-view">
-    ${newTabLink(`#${id}`, caption, preview)}<span class="file-details">${suffix}</span>
+  return `<div id="${id}" class="svg-view">
+    ${newTabLink(`#${id}`, caption, preview)}
     <div class="svg-view-actions">
       <a href="#files">${messages.back}</a>
       ${fileLink(file.path, messages.openSavedFile)}
     </div>
-  </li>`;
+  </div>`;
 }
 
 function fileExtension(file) {
@@ -88,6 +88,7 @@ function fileDescription(file, direction, messages) {
 export function captureReport({ researchId, startedAt, records, unreadable = 0, folderUnavailable = false, folderNotSelected = false, historyOnly = false, language = "en" }) {
   const locale = language === "de" ? "de" : "en";
   const messages = reportMessages[locale];
+  const fileOrder = new Intl.Collator(locale, { sensitivity: "accent" });
   const groupedFiles = new Map(groups.map((group) => [group, []]));
   const issues = [];
   if (folderUnavailable) {
@@ -124,13 +125,18 @@ export function captureReport({ researchId, startedAt, records, unreadable = 0, 
         const label = direction === "response" ? messages.received : messages.sent;
         notes.push(`<li>${label} — ${description}</li>`);
         if (file.path) {
-          const badges = direction === "response" && partial ? ` · ${messages.partialFile}` : "";
+          const badges = direction === "response" && partial ? messages.partialFile : "";
           const caption = `${name} (${label.toLowerCase()})`;
-          const earlierLabel = earlier ? ` · ${messages.earlierCapture}` : "";
+          const earlierLabel = earlier ? messages.earlierCapture : "";
           const preview = previewed.has(file.path) ? "" : mediaPreview(file, direction === "response" && partial);
           if (preview) previewed.add(file.path);
-          const suffix = `${badges}${earlierLabel} · ${details}`;
-          groupedFiles.get(fileGroup(file)).push(fileRow(file, caption, suffix, preview, svgViews, messages));
+          const fileDetails = [badges, earlierLabel, details].filter(Boolean).join(" · ");
+          const link = fileEntryLink(file, caption, preview, svgViews, messages);
+          groupedFiles.get(fileGroup(file)).push({
+            name: resource ?? host,
+            link,
+            details: fileDetails,
+          });
           saved += 1;
         } else if (file.status !== "absent") {
           issues.push(`<li>${escapeHtml(name)} · ${label}. ${description} ${details}</li>`);
@@ -162,7 +168,23 @@ export function captureReport({ researchId, startedAt, records, unreadable = 0, 
 
   const categories = groups
     .filter((group) => groupedFiles.get(group).length > 0)
-    .map((group) => `<h3>${messages[group]}</h3><ul>${groupedFiles.get(group).join("")}</ul>`)
+    .map((group) => {
+      const files = groupedFiles.get(group)
+        .sort((left, right) => fileOrder.compare(left.name, right.name));
+      const heading = `<h3 id="files-${group}">${messages[group]}</h3>`;
+      if (group === "images" || group === "media") {
+        const tiles = files.map(({ link, details }) =>
+          `<li>${link}<div class="gallery-details">${details}</div></li>`
+        ).join("");
+        return `${heading}<ul class="file-gallery" role="list" aria-labelledby="files-${group}">${tiles}</ul>`;
+      }
+      if (group === "documents") {
+        const items = files.map(({ link, details }) => `<li>${link} · ${details}</li>`).join("");
+        return `${heading}<ul aria-labelledby="files-${group}">${items}</ul>`;
+      }
+      const rows = files.map(({ link, details }) => `<tr><td>${link}</td><td>${details}</td></tr>`).join("");
+      return `${heading}<table aria-labelledby="files-${group}"><thead><tr><th scope="col">${messages.file}</th><th scope="col">${messages.captureDetails}</th></tr></thead><tbody>${rows}</tbody></table>`;
+    })
     .join("");
 
   return new Blob([`<!doctype html>
@@ -178,6 +200,24 @@ export function captureReport({ researchId, startedAt, records, unreadable = 0, 
   section { border-top: 1px solid GrayText; margin-top: 2rem; }
   li, details { margin-block: .55rem; }
   summary { cursor: pointer; }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { border-bottom: 1px solid GrayText; padding: .55rem; text-align: start; vertical-align: top; }
+  .file-gallery {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 8rem), 1fr));
+    gap: 1rem;
+    list-style: none;
+    padding: 0;
+  }
+  .file-gallery > li {
+    min-width: 0;
+    margin: 0;
+    padding: .75rem;
+    border: 1px solid GrayText;
+    border-radius: .5rem;
+  }
+  .file-gallery .preview-link { display: block; }
+  .gallery-details { margin-top: .35rem; font-size: .875rem; }
   .preview-link { display: inline-block; max-width: 100%; }
   .thumbnail {
     display: block;
@@ -190,6 +230,7 @@ export function captureReport({ researchId, startedAt, records, unreadable = 0, 
     object-fit: contain;
     pointer-events: none;
   }
+  .file-gallery .thumbnail { box-sizing: border-box; width: 100%; height: 7rem; }
   :target { outline: 2px solid currentColor; outline-offset: .25rem; }
   .svg-view-actions { display: none; }
   main:has(.svg-view:target) { visibility: hidden; }
@@ -215,7 +256,6 @@ export function captureReport({ researchId, startedAt, records, unreadable = 0, 
     flex-wrap: wrap;
     gap: 1rem;
   }
-  .svg-view:target .file-details { display: none; }
   .svg-view:target .preview-link {
     display: grid;
     grid-template-rows: minmax(0, 1fr) auto;

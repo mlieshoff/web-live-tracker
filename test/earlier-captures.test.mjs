@@ -134,7 +134,7 @@ test("rebuilt reports show neutral SVG captures under Images, including a shared
 
   assert.equal(records.length, 2);
   assert.equal(records[0].response.path, records[1].response.path);
-  assert.match(html, /<h3>Images<\/h3><ul><li id="svg-view-1"/);
+  assert.match(html, /<h3 id="files-images">Images<\/h3><ul class="file-gallery"[^>]*><li><div id="svg-view-1"/);
   assert.match(html, /target="_blank" rel="noopener noreferrer" href="#svg-view-1"><img class="thumbnail" src="data:image\/svg\+xml;base64,/);
   assert.equal((html.match(/href="#svg-view-1"/g) ?? []).length, 2);
   assert.match(html, /target="_blank" rel="noopener noreferrer" href="[^"]+response\.txt">Open saved file/);
@@ -154,6 +154,6 @@ test("an SVG too large for an inline preview still belongs to Images and keeps i
     researchId: "study", startedAt: date, ...earlierCaptureRecords(entries, "study", []),
   }).text();
 
-  assert.match(html, /<h3>Images<\/h3>.*href="[^"]+response\.txt"/);
+  assert.match(html, /<h3 id="files-images">Images<\/h3>.*href="[^"]+response\.txt"/);
   assert.doesNotMatch(html, /src="data:image\/svg/);
 });
