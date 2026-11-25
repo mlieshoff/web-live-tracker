@@ -13,24 +13,31 @@
         <h1>Web Live Tracker</h1>
         <p id="capture-status" class="capture-status" data-state="stopped" role="status" tabindex="-1">Capture stopped.</p>
       </header>
+      <div class="panel-tools">
+        <label for="panel-language" data-message="language">Language</label>
+        <select id="panel-language">
+          <option value="en" lang="en">English</option>
+          <option value="de" lang="de">Deutsch</option>
+        </select>
+      </div>
       <form id="capture-form" class="capture-form">
-        <label for="research-id">Research ID</label>
+        <label for="research-id" data-message="researchId">Research ID</label>
         <input id="research-id" type="text" maxlength="64" autocomplete="off"
           spellcheck="false" placeholder="my-first-capture" required aria-describedby="research-id-error">
         <p id="research-id-error" class="error-message" role="alert"></p>
         <div class="capture-actions">
-          <button id="start" type="submit" disabled aria-describedby="save-location">Start capture</button>
-          <button id="stop" type="button" disabled>Stop capture</button>
-          <button id="open-report" type="button" disabled>Open capture report</button>
+          <button id="start" data-message="start" type="submit" disabled aria-describedby="save-location">Start capture</button>
+          <button id="stop" data-message="stop" type="button" disabled>Stop capture</button>
+          <button id="open-report" data-message="openReport" type="button" disabled>Open capture report</button>
         </div>
         <p id="report-error" class="error-message" role="alert"></p>
-        <p id="save-location" class="save-location">Find your files and reports under <code id="save-path">Downloads/web-live-tracker/&lt;research ID&gt;/</code>.</p>
+        <p id="save-location" class="save-location"><span data-message="saveLocation">Find your files and reports under </span><code id="save-path">Downloads/web-live-tracker/&lt;research ID&gt;/</code>.</p>
         <p id="network-monitor-tip" class="save-location" hidden></p>
       </form>
       <dl class="capture-counts">
-        <div><dt>Requests captured</dt><dd id="captured-count">0</dd></div>
-        <div><dt>Files saved</dt><dd id="saved-count">0</dd></div>
-        <div><dt>Pending exchanges</dt><dd id="pending-count">0</dd></div>
+        <div><dt data-message="capturedCount">Requests captured</dt><dd id="captured-count">0</dd></div>
+        <div><dt data-message="savedCount">Files saved</dt><dd id="saved-count">0</dd></div>
+        <div><dt data-message="pendingCount">Pending exchanges</dt><dd id="pending-count">0</dd></div>
       </dl>
       <details id="save-errors" class="save-errors" hidden>
         <summary id="save-error-summary">Save errors</summary>
