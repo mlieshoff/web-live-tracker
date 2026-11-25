@@ -1,7 +1,7 @@
 import { downloadFile, downloadWithDetails } from "../shared/export.mjs";
 
 export const requestFinished = globalThis.chrome?.devtools?.network?.onRequestFinished;
-export const networkMonitorTip = "";
+export const browserName = "chrome";
 
 export function createPanel() {
   globalThis.chrome.devtools.panels.create("Web Live Tracker", "", "shared/panel.html");

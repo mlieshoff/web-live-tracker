@@ -1,7 +1,7 @@
 import { DownloadError } from "../shared/export.mjs";
 
 export const requestFinished = globalThis.browser?.devtools?.network?.onRequestFinished;
-export const networkMonitorTip = "In Firefox, open the Network tab once, then return here to start capture.";
+export const browserName = "firefox";
 
 export function createPanel() {
   // Firefox resolves the panel path relative to the DevTools page.
