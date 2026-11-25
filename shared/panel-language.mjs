@@ -26,7 +26,10 @@ export const panelMessages = {
     reportSaveFailed: (detail) => `The report could not be saved. ${detail}`,
     reportOpenFailed: (filename) => `Could not open the report. Open ${filename} from your browser’s Downloads.`,
     pickerOpenFailed: "Could not open the research folder picker. Try again.",
-    networkMonitorTip: "In Firefox, open the Network tab once, then return here to start capture.",
+    networkMonitorTip: {
+      chrome: "Open Chrome’s Network tab, then return here to start capture. For a more complete recording, enable Disable cache in the Network tab.",
+      firefox: "Open Firefox’s Network tab once, then return here to start capture. For a more complete recording, enable Disable HTTP Cache in the Network tab.",
+    },
     saveErrors: (count, failed) => `Save errors (${count} in ${failed} ${failed === 1 ? "exchange" : "exchanges"})`,
     saveErrorLimit: (shown, total) => `Showing the latest ${shown} of ${total} errors.`,
   },
@@ -57,9 +60,41 @@ export const panelMessages = {
     reportSaveFailed: (detail) => `Der Bericht konnte nicht gespeichert werden. ${detail}`,
     reportOpenFailed: (filename) => `Der Bericht konnte nicht geöffnet werden. Öffne ${filename} über die Downloads deines Browsers.`,
     pickerOpenFailed: "Die Auswahl des Rechercheordners konnte nicht geöffnet werden. Versuche es erneut.",
-    networkMonitorTip: "Öffne in Firefox einmal den Reiter „Netzwerkanalyse“ und kehre dann zum Starten der Aufzeichnung hierher zurück.",
+    networkMonitorTip: {
+      chrome: "Öffne in Chrome den Reiter „Netzwerk“ und kehre zum Starten der Aufzeichnung hierher zurück. Aktiviere dort „Cache deaktivieren“, um mehr Anfragen zu erfassen.",
+      firefox: "Öffne in Firefox einmal den Reiter „Netzwerkanalyse“ und kehre zum Starten der Aufzeichnung hierher zurück. Aktiviere dort „HTTP-Cache deaktivieren“, um mehr Anfragen zu erfassen.",
+    },
     saveErrors: (count, failed) => `Speicherfehler (${count} in ${failed} ${failed === 1 ? "Vorgang" : "Vorgängen"})`,
     saveErrorLimit: (shown, total) => `Die letzten ${shown} von ${total} Fehlern werden angezeigt.`,
+  },
+};
+
+export const captureFolderMessages = {
+  en: {
+    title: "Choose research folder",
+    instructionStart: "Select ",
+    instructionEnd: " or the web-live-tracker folder that contains it.",
+    choose: "Choose folder",
+    invalidLink: "Open this page from Web Live Tracker.",
+    reopen: "Return to Web Live Tracker and open the report again.",
+    ready: "The capture report is ready.",
+    reading: "Reading saved capture files…",
+    fallback: "Choose the folder again to use the file chooser.",
+    wrongFolder: (path) => `Choose ${path} or its web-live-tracker folder.`,
+    readFailed: "Could not read the saved capture files. Check the folder and try again.",
+  },
+  de: {
+    title: "Rechercheordner auswählen",
+    instructionStart: "Wähle ",
+    instructionEnd: " oder den übergeordneten Ordner web-live-tracker aus.",
+    choose: "Ordner auswählen",
+    invalidLink: "Öffne diese Seite über Web Live Tracker.",
+    reopen: "Kehre zu Web Live Tracker zurück und öffne den Bericht erneut.",
+    ready: "Der Aufzeichnungsbericht ist fertig.",
+    reading: "Gespeicherte Aufzeichnungsdateien werden gelesen…",
+    fallback: "Wähle den Ordner erneut aus, um die Dateiauswahl zu verwenden.",
+    wrongFolder: (path) => `Wähle ${path} oder den übergeordneten Ordner web-live-tracker aus.`,
+    readFailed: "Die gespeicherten Aufzeichnungsdateien konnten nicht gelesen werden. Prüfe den Ordner und versuche es erneut.",
   },
 };
 
