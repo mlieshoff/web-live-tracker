@@ -7,6 +7,6 @@ Web Live Tracker ist eine Browser-Erweiterung für Chrome und Firefox auf dem Co
 | Chrome | [Deutsche Anleitung für Chrome](chrome/README_DE.md) |
 | Firefox | [Deutsche Anleitung für Firefox](firefox/README_DE.md) |
 
-Die ZIP-Dateien für Chrome und Firefox findest du unter [GitHub Releases](https://github.com/mlieshoff/web-live-tracker/releases). Dort stehen auch die Titel der zugehörigen Story und Aufgaben.
+Die ZIP-Dateien für Chrome und Firefox findest du im Bereich **Releases** des GitHub-Repositorys. Dort stehen auch die Titel der zugehörigen Story und Aufgaben.
 
 [English](README.md)

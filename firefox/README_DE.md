@@ -6,7 +6,7 @@ Web Live Tracker speichert Dateien, die Firefox beim Surfen im ausgewählten Tab
 
 ## Erweiterung installieren
 
-1. Speichere `web-live-tracker-firefox.zip` auf deinem Computer. Die Datei findest du unter [GitHub Releases](https://github.com/mlieshoff/web-live-tracker/releases). Du kannst auch eine Kopie verwenden, die dir jemand geschickt hat.
+1. Speichere `web-live-tracker-firefox.zip` auf deinem Computer. Die Datei findest du im Bereich **Releases** des GitHub-Repositorys. Du kannst auch eine Kopie verwenden, die dir jemand geschickt hat.
 2. Gib in der Firefox-Adressleiste `about:debugging#/runtime/this-firefox` ein und drücke die Eingabetaste.
 3. Klicke auf **Temporäres Add-on laden…** (englisch **Load Temporary Add-on…**) und wähle die ZIP-Datei aus.
 

@@ -4,7 +4,7 @@ Web Live Tracker speichert beim Surfen Dateien auf deinem Computer. Du startest 
 
 ## 1. Erweiterung herunterladen und installieren
 
-1. Speichere `web-live-tracker-chrome.zip` auf deinem Computer. Die Datei findest du unter [GitHub Releases](https://github.com/mlieshoff/web-live-tracker/releases). Du kannst auch eine Kopie verwenden, die dir jemand geschickt hat.
+1. Speichere `web-live-tracker-chrome.zip` auf deinem Computer. Die Datei findest du im Bereich **Releases** des GitHub-Repositorys. Du kannst auch eine Kopie verwenden, die dir jemand geschickt hat.
 2. Klicke mit der rechten Maustaste auf die ZIP-Datei, wähle **Entpacken** oder **Alle extrahieren** und entpacke sie in einen eigenen Ordner.
 3. Öffne Google Chrome. Gib oben in der Adressleiste `chrome://extensions` ein und drücke die Eingabetaste.
 4. Schalte oben rechts den **Entwicklermodus** ein. Klicke auf **Entpackte Erweiterung laden**. Bei englischer Oberfläche heißt die Schaltfläche **Load unpacked**.
